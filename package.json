@@ -1,0 +1,16 @@
+{
+  "name": "running-bull-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Testable parkour scoring core for 勇敢牛牛天天跑酷 (logic only; playable Demo stays on XBuilder)",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test core/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
