@@ -31,9 +31,13 @@
 | `braveStacks` | 0 | 勇敢层数 |
 | `braveMultiplier` | 1 | 1+braveStacks |
 | `score` | 0 | distance × multiplier |
-| `runSpeed` | 8 | 卷轴/障碍速度 |
-| `gravity` | 0.8 | 重力 |
-| `jumpV` | 12 | 起跳速度 |
+| `runSpeed` | **6**（起） | 卷轴/障碍速度；36s 内可升到 10，见 PARKOUR_REFERENCE |
+| `gravity` | **0.95** | 重力（偏利落，少飘） |
+| `jumpV` | **11** | 起跳速度（点按满跳） |
+| `coyoteFrames` | 4 | 离地后仍可跳的帧数（可选） |
+| `bufferFrames` | 6 | 落地前预输入窗口（可选） |
+| `dangerInset` | 4 | 危险盒相对造型内缩 |
+| `bravePad` | 10 | 勇敢带相对危险盒外扩 |
 
 ### Bull 私有（或全局也可）
 
@@ -117,7 +121,7 @@
 
 当 按下空格键 或 点击舞台:
   如果 gameState = "playing" 且 onGround:
-    将 vy 设为 jumpV
+    将 vy 设为 jumpV  // 推荐 11；可选土狼：onGround 或 framesSinceGround≤coyoteFrames
     将 onGround 设为 false
     换成造型 jump
 
@@ -249,7 +253,24 @@
 
 ---
 
-## 8. 与资产包的对应
+## 8. 手感调参（对齐开源跑酷 · 2026-10）
+
+主参考 [Spike Sprint](https://github.com/shifulegend/spike-sprint)（MIT）+ Demon-Runner 土狼/缓冲。完整对照见 [`PARKOUR_REFERENCE.md`](PARKOUR_REFERENCE.md)。
+
+| 现象 | 改什么 |
+|------|--------|
+| 跳完飘太久 | `gravity` ↑（试 0.95～1.1）或 `jumpV` ↓ |
+| 跳太肉、障碍来不及 | `jumpV` ↑ 到 12～13；或 `runSpeed` 起速降到 5～6 |
+| 总感觉「按了没跳」 | 加 `coyoteFrames` + 点击/空格双绑；落地检查 `bufferFrames` |
+| 擦边从不触发 | `bravePad` ↑；危险盒 `dangerInset` ↑（危险变小） |
+| 擦边狂加 | 确认克隆体 `alreadyBrave`；几何用 `classifyContact` 语义 |
+
+本地可跑：`npm test`（含 `physics` / `spawn` / `nearMiss`）。
+
+---
+
+## 9. 与资产包的对应
+
 
 - 数值与规则 → `GAME_DESIGN.md`  
 - 生成时间表 → `LEVEL_1.md`  

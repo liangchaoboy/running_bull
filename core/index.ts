@@ -4,3 +4,6 @@ export * from "./metrics.js";
 export * from "./graze.js";
 export * from "./challengeCard.js";
 export * from "./dailySeed.js";
+export * from "./physics.js";
+export * from "./spawn.js";
+export * from "./nearMiss.js";

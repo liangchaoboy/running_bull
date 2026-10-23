@@ -31,7 +31,7 @@
 | 擦边障碍 | 「勇敢」+1，倍率上升 |
 | 撞障碍 | 结算：距离 × 勇敢倍率 |
 
-详见 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md)、[`docs/LEVEL_1.md`](docs/LEVEL_1.md)。
+详见 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md)、[`docs/LEVEL_1.md`](docs/LEVEL_1.md)。手感参数对照开源跑酷：[`docs/PARKOUR_REFERENCE.md`](docs/PARKOUR_REFERENCE.md)。
 
 ---
 
