@@ -17,8 +17,7 @@
 
 死亡领悟：勇敢牛牛，不怕困难。
 
-试玩 / 挑战：{Publish链接}
-（待 Publish 后替换）
+试玩 / 挑战：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 
 规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率。
 Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
@@ -39,7 +38,7 @@ Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
 
 死亡领悟：勇敢牛牛，不怕困难。
 
-试玩 / 挑战：（待 Publish 后替换）
+试玩 / 挑战：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 
 规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率。
 Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
@@ -52,7 +51,7 @@ Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
 
 ```
 🐂 得分 {score}｜勇敢 +{braveStacks}｜勇敢牛牛，不怕困难
-来玩：{Publish链接}
+来玩：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 ```
 
 ---
@@ -63,13 +62,13 @@ Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
 📅 今日种子关 {YYYY-MM-DD}
 🐂 勇敢牛牛，天天跑酷
 我的成绩：距离 {distance}｜勇敢 +{braveStacks}｜得分 {score}
-同一关，就看谁更勇：{Publish链接}
+同一关，就看谁更勇：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 ```
 
 ---
 
 ## 使用注意
 
-1. Publish 前对外只发「即将上线」，避免空链；Publish 后全局替换占位。  
+1. Publish 已上线：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull；对外群卡直接用示例链接。  
 2. 群里比分以**截图结算页 + 挑战卡**为准，防嘴炮。  
 3. 鼓励附带 3 秒死亡瞬间 GIF，转化率高于纯文字。  

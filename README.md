@@ -3,7 +3,7 @@
 > **勇敢牛牛，不怕困难。**  
 > 公司 1024 活动 · XBuilder / spx 强制作品 · 作者 [@liangchaoboy](https://github.com/liangchaoboy)
 
-**试玩链接：** （待 Publish 后替换）  
+**试玩链接：** [https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull](https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull)  
 **仓库：** https://github.com/neikochan/running_bull  
 **引擎：** [XBuilder](https://x.qiniu.com)（基于 spx / Scratch 思维的创作平台）
 
@@ -109,7 +109,7 @@ Demo 阻塞与验收：[`docs/XB_DEMO_BLOCKERS.md`](docs/XB_DEMO_BLOCKERS.md)。
 - GitHub：[@liangchaoboy](https://github.com/liangchaoboy)  
 - 项目仓库：[neikochan/running_bull](https://github.com/neikochan/running_bull)
 
-**下一步：** 按 `docs/SPX_BUILD_NOTES.md` 在 XBuilder 搭完第一关 → Publish → 把本页试玩链接占位换成正式 URL → 按 `growth/` 开 Day2 引流。
+**下一步：** Publish 已上线（见上方试玩链接）→ 按 `growth/` 开 Day2 引流；继续目视确认擦边倍率与 Remix 入口。
 
 ---
 
