@@ -7,6 +7,7 @@
 - 画面参考：《地铁跑酷》官网 https://pao.uu.cc/phone_index.html（宽三道纵深、饱和色）。
 - 进行中：加宽赛道、跑动感、炸弹清障。
 - 文档仓 `main` 已同步 intro / 操作说明（本仓库）。活动主库 `neikochan/running_bull` 当前账号仅 pull，待写权限后再同步。
+- 新增 [`docs/WECHAT_DISTRIBUTION.md`](WECHAT_DISTRIBUTION.md)：微信 H5 落地路径（今天投链+码为主；小游戏迁出后排）。
 
 ## 2026-10-24
 
