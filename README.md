@@ -37,8 +37,8 @@
 | 撞障碍 | 结算：距离 × 勇敢倍率 |
 | 开局 `1` `2` `3` | 选角色（牛牛 / 小鹿 / 小狗） |
 | 开局 `4` `5` `6` | 选地图（白天 / 夜晚 / 森林） |
-
-进行中：加宽赛道、跑动动画、炸弹清障（对齐画面感参考）。
+| `B` | 丢炸弹，清当前道障碍 |
+| 捡金币 | 同道重叠收集；计入得分 |
 
 详见 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md)、[`docs/LEVEL_1.md`](docs/LEVEL_1.md)。手感参数对照：[`docs/PARKOUR_REFERENCE.md`](docs/PARKOUR_REFERENCE.md)。
 
