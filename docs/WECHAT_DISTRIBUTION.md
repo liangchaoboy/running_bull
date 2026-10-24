@@ -1,17 +1,20 @@
 # 《勇敢牛牛》微信分发落地报告
 
+> **2026-10-25 更新：** XBuilder 发布页（`x.qiniu.com`）**手机微信不可用 / 仅桌面**。  
+> **今天主路径改为自托管手机网页：** 仓库 [`mobile-web/`](../mobile-web/)（竖屏触控三道跑酷）。  
+> 部署候选：七牛 Kodo+CDN（首选）、Gitee Pages、自有域名+CDN；GitHub Pages（`https://liangchaoboy.github.io/running_bull/mobile-web/`）仅备用，国内微信常慢或打不开。  
+> 正式公网试玩 URL：部署完成后填这里 → `（待填）`
+
 > 面向非产研同学 · 结论先行 · 今天就能投链试玩  
-> 工具约束：必须用 XBuilder（七牛 / spx）H5 Publish  
-> 试玩链接：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull  
-> 成稿日期：2026-10-25（Asia/Shanghai）  
-> 变现细节留给变现顾问；玩法改动留给 1024。
+> 原 XBuilder 桌面链（仅参考）：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull  
+> 成稿日期：2026-10-25（Asia/Shanghai）；手机版路径同日修订
 
 ---
 
 ## 1. 结论摘要
 
-**今天就能做的主路径：微信内直接投 H5 链接 + 二维码（社群 / 1v1 / 朋友圈）。**  
-XBuilder Publish 产出的是 H5，不是微信小游戏。微信内打开、扫码打开均可行，无需迁引擎、无需小程序主体。
+**今天就能做的主路径：把 `mobile-web/` 部署到国内可访问的 HTTPS 静态托管，再在微信内投链接 + 二维码（社群 / 1v1 / 朋友圈）。**  
+不要用 `x.qiniu.com` 当手机入口。自托管静态 H5，不是微信小游戏；部署后微信内打开、扫码均可，无需迁引擎、无需小程序主体。
 
 | 排序 | 路径 | 栏位 | 一句话 |
 | --- | --- | --- | --- |
@@ -24,7 +27,7 @@ XBuilder Publish 产出的是 H5，不是微信小游戏。微信内打开、扫
 | 7 | 原生微信小游戏 | 要迁引擎 | 后续路径；与 XBuilder 鸿沟大，不抢今天 |
 
 **今天第一步（任何人）：**  
-用微信打开试玩链接，确认能玩 → 生成二维码 → 发到 1 个种子群，附下方「社群话术」。
+部署 `mobile-web/` 拿到 HTTPS 地址 → 用微信打开确认能玩 → 生成二维码 → 发到 1 个种子群，附下方「社群话术」。
 
 **需 Vincent 拍板的前提：**
 

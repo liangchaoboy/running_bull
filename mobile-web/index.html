@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1a8cff" />
+  <meta name="description" content="勇敢牛牛，不怕困难 —— 竖屏三道跑酷，微信可开" />
+  <title>勇敢牛牛 · 手机跑酷</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud" aria-live="polite">
+      <div class="hud-block">
+        <span class="hud-label">距离</span>
+        <span id="hud-dist">0</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">金币</span>
+        <span id="hud-coins">0</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">得分</span>
+        <span id="hud-score">0</span>
+      </div>
+    </header>
+
+    <canvas id="game" width="420" height="740" aria-label="勇敢牛牛跑酷画面"></canvas>
+
+    <div id="touch-layer">
+      <button type="button" id="btn-left" class="touch-btn lane" aria-label="向左换道">◀</button>
+      <button type="button" id="btn-jump" class="touch-btn jump" aria-label="起跳">跳</button>
+      <button type="button" id="btn-right" class="touch-btn lane" aria-label="向右换道">▶</button>
+      <button type="button" id="btn-bomb" class="touch-btn bomb" aria-label="丢炸弹">💣</button>
+    </div>
+
+    <div id="overlay" class="show">
+      <div class="card">
+        <p class="slogan">勇敢牛牛，不怕困难</p>
+        <h1>天天跑酷</h1>
+        <p class="hint">三道换道 · 点跳 · 捡金币 · 丢炸弹</p>
+        <ul class="tips">
+          <li>左右按钮或左右滑 = 换道</li>
+          <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
+          <li>💣 清当前道障碍（有冷却）</li>
+        </ul>
+        <button type="button" id="btn-start" class="primary">开始跑</button>
+      </div>
+    </div>
+
+    <div id="over" class="hidden" aria-live="assertive">
+      <div class="card">
+        <p class="slogan">勇敢牛牛，不怕困难</p>
+        <h2>撞到了！</h2>
+        <p class="result">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
+        <p class="result score">得分 <strong id="over-score">0</strong></p>
+        <button type="button" id="btn-retry" class="primary">再来一局</button>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -3,7 +3,23 @@
 > **勇敢牛牛，不怕困难。**  
 > 一款可贴障碍擦边叠倍率的网页跑酷小游戏 · 作者 [@liangchaoboy](https://github.com/liangchaoboy)
 
-**试玩链接：** [https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull](https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull)  
+**试玩链接（XBuilder / 桌面）：** [https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull](https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull)  
+
+> ⚠️ XBuilder 发布页**不适合手机微信**。手机请用下方「手机网页版」。
+
+### 手机网页版（微信可部署）
+
+静态 H5，目录 [`mobile-web/`](mobile-web/)：
+
+```bash
+cd mobile-web && python3 -m http.server 8080
+# 打开 http://127.0.0.1:8080/
+```
+
+- 竖屏三道 · 触控换道 / 跳 / 炸弹 · 捡金币  
+- 说明与托管建议见 [`mobile-web/README.md`](mobile-web/README.md)  
+- 正式公网 URL（七牛 / Gitee / 自有域名）部署后补在此处；GitHub Pages 候选：`https://liangchaoboy.github.io/running_bull/mobile-web/`（国内微信不保证可开）
+
 **仓库：** https://github.com/liangchaoboy/running_bull  
 **引擎：** [XBuilder](https://x.qiniu.com)（基于 spx / Scratch 思维的创作平台）
 
