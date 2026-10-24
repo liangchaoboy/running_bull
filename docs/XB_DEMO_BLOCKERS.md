@@ -2,7 +2,7 @@
 
 > 可玩 Demo **只能在 XBuilder 搭**；本仓库是文案包 + 逻辑测试。  
 > 用途：课前 / 评委前自检；阻塞解除后把 Publish URL 写回 README。  
-> 状态核实：2026-10-24 Asia/Shanghai。
+> 状态核实：2026-10-25 Asia/Shanghai。
 
 ---
 
@@ -12,7 +12,7 @@
 |---|------|------|------|
 | B1 | **用户登录 XBuilder**（[x.qiniu.com](https://x.qiniu.com)）并创建/打开工程 | Vincent | ✅ 已登录（2026-10-24） |
 | B2 | 账号能 **Publish** 出公网可开链接（手机+桌面） | Vincent / 平台权限 | ✅ 已验证：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull |
-| B3 | 仓库推到 GitHub 主库 | 需 push 权限 | ❌ 已核实：远端空壳；当前连接账号仅 pull、无 push。**不阻塞** Demo 可玩（资产已推 [liangchaoboy/running_bull](https://github.com/liangchaoboy/running_bull)） |
+| B3 | 仓库推到 GitHub 活动主库 `neikochan/running_bull` | 需 push / collaborator | ⚠️ 主库已有「大角牛快跑」模板资产；`liangchaoboy` 仍仅 pull。玩法文档持续推 [liangchaoboy/running_bull](https://github.com/liangchaoboy/running_bull) `main`。**不阻塞** Demo 可玩 |
 
 本地已就绪：`docs/` + `growth/` 资产包；`npm test` → 15/15 通过。云端代理区域不可用 → **不作为** XBuilder 搭建路径。
 
