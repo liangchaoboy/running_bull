@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-25（微信文档）
+
+- 更新 WECHAT_DISTRIBUTION：主路径改为自托管手机网页；备用 Pages https://liangchaoboy.github.io/running_bull/mobile-web/；正式入口待七牛 Kodo+CDN。
+
 ## 2026-10-25（手机网页版）
 
 - 新增独立静态站 [`mobile-web/`](../mobile-web/)：竖屏三道、触控换道/跳/炸弹、金币、结算重开；**零 npm 依赖**，不依赖 XBuilder。
