@@ -3,7 +3,8 @@
 > **2026-10-25 更新：** XBuilder 发布页（`x.qiniu.com`）**手机微信不可用 / 仅桌面**。  
 > **今天主路径改为自托管手机网页：** 仓库 [`mobile-web/`](../mobile-web/)（竖屏触控三道跑酷）。  
 > 部署候选：七牛 Kodo+CDN（首选）、Gitee Pages、自有域名+CDN；GitHub Pages（`https://liangchaoboy.github.io/running_bull/mobile-web/`）仅备用，国内微信常慢或打不开。  
-> 正式公网试玩 URL：部署完成后填这里 → `（待填）`
+> 备用 Pages（勿当国内微信主入口）：https://liangchaoboy.github.io/running_bull/mobile-web/  
+> 正式公网试玩 URL（七牛/Gitee/自有域）：部署完成后填这里 → `（待填）`
 
 > 面向非产研同学 · 结论先行 · 今天就能投链试玩  
 > 原 XBuilder 桌面链（仅参考）：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull  

@@ -18,7 +18,8 @@ cd mobile-web && python3 -m http.server 8080
 
 - 竖屏三道 · 触控换道 / 跳 / 炸弹 · 捡金币  
 - 说明与托管建议见 [`mobile-web/README.md`](mobile-web/README.md)  
-- 正式公网 URL（七牛 / Gitee / 自有域名）部署后补在此处；GitHub Pages 候选：`https://liangchaoboy.github.io/running_bull/mobile-web/`（国内微信不保证可开）
+- GitHub Pages（已开，备用）：[https://liangchaoboy.github.io/running_bull/mobile-web/](https://liangchaoboy.github.io/running_bull/mobile-web/) — **国内微信常慢/打不开，勿当主入口**
+- 正式公网 URL 请部署到七牛 Kodo/CDN、Gitee Pages 或自有域名后补在此处
 
 **仓库：** https://github.com/liangchaoboy/running_bull  
 **引擎：** [XBuilder](https://x.qiniu.com)（基于 spx / Scratch 思维的创作平台）
