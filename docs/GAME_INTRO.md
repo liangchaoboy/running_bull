@@ -5,7 +5,7 @@
 - **试玩：** https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull  
 - **角色：** 牛牛 / 小鹿 / 小狗（开局点选或按 `1` `2` `3`）  
 - **地图：** 白天 / 夜晚 / 森林（`4` `5` `6`）  
-- **操作：** 空格 / 点击起跳；←→ 或 A/D 换道；死后空格再开一局  
+- **操作：** 空格 / 点击起跳；←→ 或 A/D 换道；`B` 丢炸弹清障；路上捡金币；死后空格再开一局  
 - **二创：** 在 [XBuilder](https://x.qiniu.com) 上 Remix，换皮、改关、换 BGM；标签建议 `#勇敢牛牛` `#XBuilder` `#跑酷`  
 - **作者：** [liangchaoboy](https://github.com/liangchaoboy) · 仓库 https://github.com/liangchaoboy/running_bull  
 
