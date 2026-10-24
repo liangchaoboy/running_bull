@@ -31,6 +31,11 @@ describe("challenge card payload (CHALLENGE_CARD.md)", () => {
     assert.match(text, /勇敢：\+3（倍率 ×4）/);
     assert.match(text, /得分：400/);
     assert.match(text, /勇敢牛牛，不怕困难/);
+    assert.match(text, /#勇敢牛牛/);
+    assert.match(text, /#XBuilder/);
+    assert.match(text, /#跑酷/);
+    assert.doesNotMatch(text, /#1024/);
+    assert.match(text, /liangchaoboy\/running_bull/);
   });
 
   it("short card and daily seed card include publish url / date", () => {

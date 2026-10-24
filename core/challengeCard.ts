@@ -57,8 +57,8 @@ export function formatStandardCard(p: ChallengeCardPayload): string {
     `试玩 / 挑战：${p.publishUrl}`,
     "",
     "规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率。",
-    "Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛",
-    "作者：liangchaoboy · 仓库 github.com/neikochan/running_bull",
+    "Remix 欢迎：换皮、改关，打标签 #勇敢牛牛 #XBuilder #跑酷",
+    "作者：liangchaoboy · 仓库 github.com/liangchaoboy/running_bull",
   ].join("\n");
 }
 

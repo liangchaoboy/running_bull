@@ -1,6 +1,6 @@
 # 挑战卡模板（可复制）
 
-> 用在：结算后口播、飞书/微信群踢馆、朋友圈、工位二维码旁。  
+> 用在：结算后口播、飞书/微信群踢馆、朋友圈。  
 > 把大括号替换成实数与 Publish 链接。
 
 ---
@@ -20,8 +20,8 @@
 试玩 / 挑战：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 
 规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率。
-Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
-作者：liangchaoboy · 仓库 github.com/neikochan/running_bull
+Remix 欢迎：换皮、改关，打标签 #勇敢牛牛 #XBuilder #跑酷
+作者：liangchaoboy · 仓库 github.com/liangchaoboy/running_bull
 ```
 
 ---
@@ -41,8 +41,8 @@ Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
 试玩 / 挑战：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull
 
 规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率。
-Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
-作者：liangchaoboy · 仓库 github.com/neikochan/running_bull
+Remix 欢迎：换皮、改关，打标签 #勇敢牛牛 #XBuilder #跑酷
+作者：liangchaoboy · 仓库 github.com/liangchaoboy/running_bull
 ```
 
 ---
@@ -56,7 +56,7 @@ Remix 欢迎：换皮、改关，打标签 #1024 #勇敢牛牛
 
 ---
 
-## 日种子卡（Day2 若启用「每日一关」文案）
+## 日种子卡（若启用「每日一关」文案）
 
 ```
 📅 今日种子关 {YYYY-MM-DD}
