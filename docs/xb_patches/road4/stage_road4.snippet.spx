@@ -1,0 +1,52 @@
+# road4 Stage — DRAMATIC curveAmp + Camera slope bob (~3× feel2)
+# Vars (keep): prevSecSlot float64, slopeBob float64
+# Paste over road3 curve block inside forever:
+
+		if running {
+			curvePhase = curvePhase + 0.007
+			if curvePhase > 6.28318 {
+				curvePhase = curvePhase - 6.28318
+			}
+			# road4 A: ~2.8–3.2× feel2 amps — curve must beat lane-change
+			curveAmp = 88
+			if mapId == 3 {
+				curveAmp = 125
+			} else if mapId == 7 {
+				curveAmp = 118
+			} else if mapId == 5 {
+				curveAmp = 58
+			} else if mapId == 6 {
+				curveAmp = 80
+			} else if mapId == 4 {
+				curveAmp = 74
+			}
+			secSlot = float64(int(runT/8) % 3)
+			if secSlot == 1 {
+				curveAmp = curveAmp * 1.45
+			} else if secSlot == 2 {
+				curveAmp = curveAmp * 1.08
+			}
+			if secSlot != prevSecSlot {
+				prevSecSlot = secSlot
+				if secSlot == 1 {
+					broadcast "secbridge"
+				} else if secSlot == 2 {
+					broadcast "seccave"
+				}
+			}
+			curveBend = curveBend + (math.Sin(curvePhase)*curveAmp - curveBend)*0.06
+			# road4 B: bold horizon bob (≥3× feel2); bridge UP / cave DOWN
+			slopeBob = math.Sin(runT * 1.05) * 38
+			if secSlot == 1 {
+				slopeBob = slopeBob + 28
+			} else if secSlot == 2 {
+				slopeBob = slopeBob - 30
+			}
+			Camera.setXYpos 0, 75 + slopeBob
+		} else {
+			curveBend = curveBend * 0.85
+			if curveBend < 0.4 && curveBend > -0.4 {
+				curveBend = 0
+			}
+			Camera.setXYpos 0, 75
+		}

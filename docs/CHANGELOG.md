@@ -1,3 +1,7 @@
+## 2026-10-26 · road4（桥/洞/弯/坡肉眼可读）
+
+- road3 实机不及格：改绘制（桥下空隙+窄堤+粗高栏、洞壁到近场+全隧压暗含路面、近场甩弯、坡 ≥3× feel2），不只加 amp/标签。`?v=road4`。XB：`docs/xb_patches/road4/APPLY_ROAD4.md`（待 Publish）。保留 ui1 / Bravery Run / LANE_SNAP / 植物 / playfix1。详见 [`ROAD4_NOTES.md`](ROAD4_NOTES.md)。
+
 ## 2026-10-26 · ui1（去掉道具触控钮）
 
 - 移除底部「道具」展开与 💣/⚡/🛡️ 触控钮；触控栏仅 ◀/跳/▶。键盘 B/X/I 仍可用。`?v=ui1`。详见 [`UI1_NOTES.md`](UI1_NOTES.md)。
