@@ -1,3 +1,10 @@
+## 2026-10-25 · boost1（全地图短冲刺加速 ⚡）
+
+- 点按短冲刺：约 **1.0s** `runSpeed×1.45`，结束后 **2.5s CD**；每局限 **3** 次。
+- 触发：键 **X** / 触控 **⚡**；爆发时换道软化（软锁 0.1s + 更慢 snap）；飞机 toast「后喷」。
+- XBuilder：`xb_src/patches/boost/APPLY_BOOST.md`（**待 Publish**）；设计 [`XBUILDER_BOOST.md`](XBUILDER_BOOST.md)。
+- mobile-web `?v=boost1`；feel1 skip×2 / plant / forest / plane 扫射保持。
+
 ## 2026-10-25 · plane2（飞机显示消失修复）
 
 - **根因（web）**：`project`/`drawPlayerPlane` 用小数 `displayLane` 索引 `LANE_X` → `NaN`，换道后机体不画。

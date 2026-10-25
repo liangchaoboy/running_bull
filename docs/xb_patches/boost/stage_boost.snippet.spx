@@ -1,0 +1,51 @@
+// === BOOST · paste into Stage (vars + forever tick + KeyX + boot) ===
+// Design: tap burst ~1.0s ×1.45 speed, then 2.5s CD; 3 charges/run; 0.1s inputLock on fire.
+// All mapIds including 7 (plane = rear-thrust feel). Do not touch feel1 adSkip / plant / plane autofire.
+
+// --- A. vars (next to invulnCharges / invulnT) ---
+	boostCharges float64
+	boostT       float64
+	boostCd      float64
+
+// --- B. forever: tick CD / burst (near inputLock countdown) ---
+		if boostT > 0 {
+			boostT = boostT - 0.02
+			if boostT <= 0 {
+				boostT = 0
+				boostCd = 2.5
+			}
+		}
+		if boostCd > 0 {
+			boostCd = boostCd - 0.02
+			if boostCd < 0 {
+				boostCd = 0
+			}
+		}
+
+// --- C. forever: AFTER base runSpeed assigned for this map, apply burst ---
+			if boostT > 0 {
+				runSpeed = runSpeed * 1.45
+			}
+
+// --- D. onKey KeyX (primary). Optional: also KeyF if KeyX conflicts in editor ---
+onKey KeyX, => {
+	if running && !over && !adOn && !quizOn && boostCharges > 0 && boostT <= 0 && boostCd <= 0 {
+		boostCharges = boostCharges - 1
+		boostT = 1
+		inputLock = 0.1
+		broadcast "boost"
+	}
+}
+
+// --- E. onMsg "boot": reset with invuln ---
+	boostCharges = 3
+	boostT = 0
+	boostCd = 0
+
+// --- F. optional ad refill stub (do NOT wire UI yet) ---
+// onMsg "boostrefill", => {
+// 	boostCharges = boostCharges + 1
+// 	if boostCharges > 3 {
+// 		boostCharges = 3
+// 	}
+// }

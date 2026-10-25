@@ -29,6 +29,11 @@
   const hudInvuln = document.getElementById("hud-invuln");
   const hudLabelInvuln = document.getElementById("hud-label-invuln");
   const hudInvulnPill = document.getElementById("hud-invuln-pill");
+  const btnBoost = document.getElementById("btn-boost");
+  const btnBoostCount = document.getElementById("btn-boost-count");
+  const hudBoost = document.getElementById("hud-boost");
+  const hudLabelBoost = document.getElementById("hud-label-boost");
+  const hudBoostPill = document.getElementById("hud-boost-pill");
   const modePick = document.getElementById("mode-pick");
   const titleSlogan = document.getElementById("title-slogan");
   const titleHeading = document.getElementById("title-heading");
@@ -73,6 +78,14 @@
   const ROAD_SCALE = 1.18;
   const INVULN_CHARGES = 3;
   const INVULN_DURATION = 10;
+  /** Short-burst boost (all maps): tap, not hold. */
+  const BOOST_CHARGES = 3;
+  const BOOST_DURATION = 1.0;
+  const BOOST_MULT = 1.45;
+  const BOOST_CD = 2.5;
+  const BOOST_LOCK = 0.1;
+  const BOOST_LANE_SNAP = 0.45;
+  const BOOST_LANE_LERP = 26;
   /** 撞障激励广告：观看冻结；看完后短暂无敌 + 短道具。 */
   const REWARD_AD_DURATION = 2.0;
   const REWARD_AD_INVULN = 1.8;
@@ -291,6 +304,10 @@
   let bombCd = 0;
   let invulnCharges = INVULN_CHARGES;
   let invulnT = 0;
+  let boostCharges = BOOST_CHARGES;
+  let boostT = 0;
+  let boostCd = 0;
+  let boostLockT = 0;
   let spawnAcc = 0;
   let coinAcc = 0;
   let runPhase = 0;
@@ -949,7 +966,7 @@
           : mode === "forest"
             ? "已选优美森林 · 背对冲刺 · 道边树影（键6）"
             : mode === "plane"
-              ? "已选飞机大战 · 默认扫射 · 小怪3血大怪10血（键0）"
+              ? "已选飞机大战 · 默认扫射 · X后喷 · 小怪3血大怪10血（键0）"
               : "选地图 · 点下方卡片（手机无需键盘）";
     }
     if (btnStart) {
@@ -1192,6 +1209,7 @@
     hudCoins.textContent = String(coins);
     hudScore.textContent = String(score);
     syncInvulnUi();
+    syncBoostUi();
   }
 
   function isRewardedAdOpen() {
@@ -1248,6 +1266,81 @@
     syncInvulnUi();
   }
 
+  function isBoosting() {
+    return boostT > 0;
+  }
+
+  function syncBoostUi() {
+    const active = isBoosting();
+    const cooling = !active && boostCd > 0;
+    const left = Math.max(0, boostCharges);
+    if (hudBoost) {
+      if (active) hudBoost.textContent = boostT.toFixed(1) + "s";
+      else if (cooling) hudBoost.textContent = "CD" + Math.ceil(boostCd);
+      else hudBoost.textContent = String(left);
+    }
+    if (hudLabelBoost) {
+      hudLabelBoost.textContent = active
+        ? (mode === "plane" ? "后喷" : "加速中")
+        : cooling
+          ? "冷却"
+          : "加速";
+    }
+    if (hudBoostPill) {
+      hudBoostPill.classList.toggle("active", active);
+      hudBoostPill.classList.toggle("cooling", cooling);
+    }
+    if (btnBoostCount) {
+      if (active) btnBoostCount.textContent = boostT.toFixed(1) + "s";
+      else if (cooling) btnBoostCount.textContent = Math.ceil(boostCd) + "s";
+      else btnBoostCount.textContent = "×" + left;
+    }
+    if (btnBoost) {
+      btnBoost.classList.toggle("active", active);
+      btnBoost.classList.toggle("empty", !active && !cooling && left <= 0);
+      btnBoost.classList.toggle("cooling", cooling);
+      btnBoost.disabled =
+        active ||
+        cooling ||
+        left <= 0 ||
+        !running ||
+        dead ||
+        deathFx ||
+        isRewardedAdOpen();
+      btnBoost.setAttribute(
+        "aria-label",
+        active
+          ? (mode === "plane" ? "后喷剩余 " : "加速剩余 ") + boostT.toFixed(1) + " 秒"
+          : cooling
+            ? "加速冷却 " + Math.ceil(boostCd) + " 秒"
+            : "短冲刺加速，剩余 " + left + " 次（键 X）"
+      );
+    }
+  }
+
+  function activateBoost() {
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (isBoosting() || boostCd > 0) return;
+    if (boostCharges <= 0) return;
+    boostCharges -= 1;
+    boostT = BOOST_DURATION;
+    boostLockT = BOOST_LOCK;
+    flashT = Math.max(flashT, 0.22);
+    shakeT = Math.max(shakeT, 0.12);
+    const label = mode === "plane" ? "后喷!" : "加速!";
+    const col = mode === "plane" ? "#7ec8ff" : "#ffcc44";
+    burst(player.lane, 0.78, mode === "plane" ? "rgba(120,200,255,0.9)" : "rgba(255,180,60,0.9)", 14);
+    spawnFloatText(player.lane, 0.78, label, col);
+    syncBoostUi();
+  }
+
+  /** Optional later: rewarded-ad refill (stub only — not wired to UI). */
+  function refillBoostChargeStub() {
+    boostCharges = Math.min(BOOST_CHARGES, boostCharges + 1);
+    syncBoostUi();
+  }
+
+
   function smashObstacle(e) {
     e.alive = false;
     boomBurst(e.lane, e.z, 0.85);
@@ -1260,11 +1353,14 @@
 
   function changeLane(dir) {
     if (!running || dead || deathFx || isRewardedAdOpen()) return;
+    if (boostLockT > 0) return;
     const next = Math.max(0, Math.min(LANES - 1, player.lane + dir));
     if (next === player.lane) return;
     player.lane = next;
     // Immediate visual response, then LANE_LERP eases the rest.
-    player.displayLane += (player.lane - player.displayLane) * LANE_SNAP;
+    // During boost: softer snap so ×1.45 does not feel floaty.
+    const snap = isBoosting() ? BOOST_LANE_SNAP : LANE_SNAP;
+    player.displayLane += (player.lane - player.displayLane) * snap;
   }
 
   function jump() {
@@ -2307,14 +2403,32 @@
     } else {
       speed = Math.min(SPEED_MAX, SPEED_START + distance * SPEED_RAMP);
     }
-    const zSpeed = (speed / 420) * (mode === "chill" ? 0.42 : 0.50);
-    roadScroll += speed * dt;
-    distance += (speed * dt) / 18;
+    if (boostT > 0) {
+      boostT -= dt;
+      if (boostT <= 0) {
+        boostT = 0;
+        boostCd = BOOST_CD;
+      }
+    }
+    if (boostCd > 0) {
+      boostCd -= dt;
+      if (boostCd < 0) boostCd = 0;
+    }
+    if (boostLockT > 0) {
+      boostLockT -= dt;
+      if (boostLockT < 0) boostLockT = 0;
+    }
+    const moveSpeed = isBoosting() ? speed * BOOST_MULT : speed;
+    const zSpeed = (moveSpeed / 420) * (mode === "chill" ? 0.42 : 0.50);
+    roadScroll += moveSpeed * dt;
+    distance += (moveSpeed * dt) / 18;
     // Steady stride: base cadence + light speed coupling (less "panic legs").
-    runPhase += dt * (2.15 + speed * 0.0055);
+    runPhase += dt * (2.15 + moveSpeed * 0.0055);
     sessionPlaySec += dt;
 
-    player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * LANE_LERP);
+    const laneLerp = isBoosting() ? BOOST_LANE_LERP : LANE_LERP;
+    player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * laneLerp);
+    syncBoostUi();
 
     if (player.jumpBuffered > 0) player.jumpBuffered -= dt;
     if (player.landGrace > 0) player.landGrace -= dt;
@@ -4893,6 +5007,7 @@
   bindPress(btnJump, jump);
   bindPress(btnBomb, fireBomb);
   bindPress(btnInvuln, activateInvuln);
+  bindPress(btnBoost, activateBoost);
 
   /** Pick a mode card. Re-tapping already-selected plant starts the run (phone-friendly). */
   let lastModePickAt = 0;
@@ -5094,6 +5209,10 @@
       case "q":
       case "Q":
         activateInvuln();
+        break;
+      case "x":
+      case "X":
+        activateBoost();
         break;
       case "Enter":
         if (!running) resetGame();

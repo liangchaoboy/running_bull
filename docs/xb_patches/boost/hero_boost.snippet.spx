@@ -1,0 +1,30 @@
+// === BOOST · paste into each hero forever lane-snap + showmenu + onMsg boost ===
+
+// --- Lane snap during burst: slower so high speed does not feel floaty ---
+// Replace: setXpos xpos + (tx-xpos)*0.88
+// With:
+				snapK = 0.88
+				if boostT > 0 {
+					snapK = 0.48
+				}
+				if xpos < tx-6 || xpos > tx+6 {
+					setXpos xpos + (tx-xpos)*snapK
+				} else {
+					setXpos tx
+				}
+// Add var on hero if needed: snapK float64
+// inputLock 0.1 on activate already blocks lane edge in existing `if inputLock <= 0` block.
+
+// --- onMsg "boost" toast ---
+onMsg "boost", => {
+	if hero == id && running {
+		if mapId == 7 {
+			say "后喷!", 0.45
+		} else {
+			say "加速!", 0.45
+		}
+	}
+}
+
+// --- showmenu: append X加速 to say line ---
+// e.g. ...0飞机\nX加速(每局限3 · 短冲刺)

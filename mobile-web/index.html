@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a8cff" />
   <meta name="description" content="勇敢牛牛，不怕困难 —— 竖屏三道跑酷，微信可开" />
   <title>勇敢牛牛 · 手机跑酷</title>
-  <link rel="stylesheet" href="style.css?v=plane2" />
+  <link rel="stylesheet" href="style.css?v=boost1" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -41,6 +41,13 @@
           <span id="hud-invuln">3</span>
         </div>
       </div>
+      <div class="hud-pill boost-pill" id="hud-boost-pill" title="短冲刺加速（键 X）">
+        <span class="hud-ico" aria-hidden="true">⚡</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-boost">加速</span>
+          <span id="hud-boost">3</span>
+        </div>
+      </div>
     </header>
 
     <canvas id="game" width="420" height="740" aria-label="勇敢牛牛跑酷画面"></canvas>
@@ -50,6 +57,10 @@
       <button type="button" id="btn-jump" class="touch-btn jump" aria-label="起跳">跳</button>
       <button type="button" id="btn-right" class="touch-btn lane" aria-label="向右换道">▶</button>
       <button type="button" id="btn-bomb" class="touch-btn bomb" aria-label="丢炸弹">💣</button>
+      <button type="button" id="btn-boost" class="touch-btn boost" aria-label="短冲刺加速">
+        <span class="boost-emoji" aria-hidden="true">⚡</span>
+        <span class="boost-count" id="btn-boost-count">×3</span>
+      </button>
       <button type="button" id="btn-invuln" class="touch-btn invuln" aria-label="无敌冲撞">
         <span class="invuln-emoji" aria-hidden="true">🛡️</span>
         <span class="invuln-count" id="btn-invuln-count">3</span>
@@ -131,6 +142,7 @@
           <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
           <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
           <li>✈️ 飞机大战：默认扫射；小怪3血/大怪10血；弯道；键0</li>
+          <li>⚡ 短冲刺×3：键 X / 触控 ⚡ · 约 1 秒加速×1.45，冷却 2.5 秒（飞机=后喷）</li>
           <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍</li>
           <li>📺 撞障看激励广告（示意 2 秒）后继续；跳过两次认栽结算；看完送短护盾/清道</li>
         </ul>
@@ -138,8 +150,8 @@
         <p class="about-blurb" id="about-blurb">
           原创竖屏三道跑酷：选角选图，换道跳跃躲障捡币；含飞机大战扫射模式。口号「勇敢牛牛，不怕困难」。
           抽奖与 Top3 红包为<strong>活动示意 / 非赌博</strong>；撞障激励为本地占位（非 AdSense）。
-          <a href="about.html?v=plane2">关于</a> ·
-          <a href="privacy.html?v=plane2">隐私政策</a>
+          <a href="about.html?v=boost1">关于</a> ·
+          <a href="privacy.html?v=boost1">隐私政策</a>
         </p>
 
         <!-- AdSense display slot (title / menu). Disabled until __RB_ADSENSE.enabled + real ca-pub. -->
@@ -172,8 +184,8 @@
 
         <button type="button" id="btn-start" class="primary">▶ 开始跑</button>
         <p class="legal-links">
-          <a href="about.html?v=plane2">关于</a>
-          · <a href="privacy.html?v=plane2">隐私政策</a>
+          <a href="about.html?v=boost1">关于</a>
+          · <a href="privacy.html?v=boost1">隐私政策</a>
           · <span class="legal-note">抽奖示意 / 非赌</span>
         </p>
       </div>
@@ -222,8 +234,8 @@
         <button type="button" id="btn-retry" class="primary">▶ 再来一局</button>
         <button type="button" id="btn-change-mode" class="ghost">换地图</button>
         <p class="legal-links compact">
-          <a href="about.html?v=plane2">关于</a>
-          · <a href="privacy.html?v=plane2">隐私</a>
+          <a href="about.html?v=boost1">关于</a>
+          · <a href="privacy.html?v=boost1">隐私</a>
           · <span class="legal-note">抽奖示意 / 非赌</span>
         </p>
       </div>
@@ -266,6 +278,6 @@
       note: "Display only. Rewarded hit ads stay on window.__RB_REWARDED_AD (mock)."
     };
   </script>
-  <script src="game.js?v=plane2"></script>
+  <script src="game.js?v=boost1"></script>
 </body>
 </html>
