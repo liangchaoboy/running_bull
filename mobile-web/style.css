@@ -567,6 +567,13 @@ html, body {
   max-height: min(92dvh, 720px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+#overlay,
+#over,
+.login-modal {
+  touch-action: pan-y;
 }
 
 .login-modal {
