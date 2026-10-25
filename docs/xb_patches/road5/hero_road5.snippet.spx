@@ -1,0 +1,23 @@
+# road5 — stronger curve lean for plain whip + section enter say
+# Replace: tx = tx + curveBend*0.62  →  *0.88
+# say is optional UX; Camera bob + Brightness carry cave readability.
+
+				laneHome = tx
+				tx = tx + curveBend*0.88
+				snapK = 0.94
+				if boostT > 0 {
+					snapK = 0.58
+				}
+				if xpos < tx-5 || xpos > tx+5 {
+					setXpos xpos + (tx-xpos)*snapK
+				} else {
+					setXpos tx
+				}
+
+# Keep (once per hero):
+onMsg "secbridge" => {
+	say "过桥", 1.2
+}
+onMsg "seccave" => {
+	say "进入山洞", 1.2
+}

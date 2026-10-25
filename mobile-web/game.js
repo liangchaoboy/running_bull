@@ -94,20 +94,20 @@
   const BOOST_LOCK = 0.1;
   const BOOST_LANE_SNAP = 0.55;
   const BOOST_LANE_LERP = 36;
-  /** road4: DRAMATIC bridge/cave/curve/slope — must read in ~1s (road3 failed). */
+  /** road5: plain whip-curve + cave solid rock flush/pinch (road4 cave/curve FAIL). */
   const ROAD_WIDTH_K = 0.028;
   const ROAD_WIDTH_AMP = 0.22;
   const ROAD_SLOPE_K = 0.026;
   const ROAD_SLOPE_AMP = 0.110;
   const ROAD_SECTION_LEN = 160;
-  const CURVE_K_DEFAULT = 0.036;
-  const CURVE_AMP_DEFAULT = 0.145;
-  const CURVE_K_PLANT = 0.034;
-  const CURVE_AMP_PLANT = 0.125;
-  const CURVE_K_SPACE = 0.030;
-  const CURVE_AMP_SPACE = 0.115;
-  const CURVE_K_CHILL = 0.024;
-  const CURVE_AMP_CHILL = 0.090;
+  const CURVE_K_DEFAULT = 0.040;
+  const CURVE_AMP_DEFAULT = 0.220;
+  const CURVE_K_PLANT = 0.036;
+  const CURVE_AMP_PLANT = 0.185;
+  const CURVE_K_SPACE = 0.032;
+  const CURVE_AMP_SPACE = 0.170;
+  const CURVE_K_CHILL = 0.026;
+  const CURVE_AMP_CHILL = 0.135;
   const SECTION_BANNER_SEC = 1.2;
   /** 撞障激励广告：观看冻结；看完后短暂无敌 + 短道具。 */
   const REWARD_AD_DURATION = 2.0;
@@ -128,12 +128,12 @@
   const ROAD_HALF_FAR_SPACE = 0.065;
   const ROAD_HALF_NEAR_SPACE = 0.54;
   /** 优美森林 / 土路：灭点与路心横向弯道（相对 vw）。 */
-  const CURVE_K_FOREST = 0.044;
-  const CURVE_AMP_FOREST = 0.195;
-  const CURVE_K_EARTH = 0.038;
-  const CURVE_AMP_EARTH = 0.170;
-  const CURVE_K_PLANE = 0.042;
-  const CURVE_AMP_PLANE = 0.180;
+  const CURVE_K_FOREST = 0.048;
+  const CURVE_AMP_FOREST = 0.285;
+  const CURVE_K_EARTH = 0.044;
+  const CURVE_AMP_EARTH = 0.255;
+  const CURVE_K_PLANE = 0.046;
+  const CURVE_AMP_PLANE = 0.265;
   /** 飞机大战：默认扫射间隔；小怪/大怪 HP */
   const PLANE_FIRE_INTERVAL = 0.14;
   const PLANE_HP_SMALL = 3;
@@ -1096,7 +1096,7 @@
     return { w: rect.width || W, h: rect.height || H };
   }
 
-  /** road4 A: near-field whip-bend — curve must beat lane-change visually. */
+  /** road5 A: PLAIN near-field whip — S/bend in ~1s, beats lane-change (not bridge-only). */
   function curveDx(z, vw) {
     let k = CURVE_K_DEFAULT;
     let ampFrac = CURVE_AMP_DEFAULT;
@@ -1120,16 +1120,19 @@
       ampFrac = CURVE_AMP_CHILL;
     }
     const sec = roadSectionId();
-    if (sec === "bridge") ampFrac *= 1.45;
-    else if (sec === "cave") ampFrac *= 1.08;
+    // Plain carries full amp (road4 failed by relying on bridge berm).
+    if (sec === "plain") ampFrac *= 1.12;
+    else if (sec === "bridge") ampFrac *= 1.45;
+    else if (sec === "cave") ampFrac *= 1.12;
     const zz = Math.max(0, Math.min(1, z));
-    const phase = distance * k - (1 - zz) * 1.05;
-    // Almost flat at vanish; hard whip near camera (centerline/edges swing).
-    const depth = 0.04 + 0.96 * Math.pow(zz, 1.55);
+    // Stronger far→near phase so centerline shows S, not a rigid lateral shift.
+    const phase = distance * k - (1 - zz) * 1.95;
+    // Vanish nearly straight; hard whip underfoot (z^2.05).
+    const depth = 0.02 + 0.98 * Math.pow(zz, 2.05);
     return Math.sin(phase) * vw * ampFrac * depth;
   }
 
-  /** road4 B: berm/tunnel pinch — bridge ≈ half-width causeway, cave squeeze. */
+  /** road5 B: bridge berm keep; cave pinch harder (~×0.34 near vs plain). */
   function roadWidthMul(z) {
     const zz = Math.max(0, Math.min(1, z));
     const phase = distance * ROAD_WIDTH_K - (1 - zz) * 0.55;
@@ -1138,20 +1141,20 @@
     const sec = roadSectionId();
     // Near-weighted pinch so berm/tunnel is obvious underfoot.
     const nearW = 0.35 + 0.65 * zz;
-    if (sec === "bridge") mul *= 0.92 - 0.38 * nearW; // → ~0.54 near
-    else if (sec === "cave") mul *= 0.90 - 0.42 * nearW; // → ~0.48 near
+    if (sec === "bridge") mul *= 0.92 - 0.38 * nearW; // → ~0.54 near (keep)
+    else if (sec === "cave") mul *= 0.84 - 0.50 * nearW; // → ~0.34 near (road5 harder)
     return mul;
   }
 
-  /** road4 B: horizon bob ≥3× feel2; bridge lift / cave drop bold. */
+  /** road5 B: bridge rise keep; cave descend +1 notch. */
   function roadSlopeDy(z, vh) {
     const zz = Math.max(0, Math.min(1, z));
     const phase = distance * ROAD_SLOPE_K - (1 - zz) * 0.75;
     const depth = 0.12 + 0.88 * Math.pow(zz, 1.05);
     let dy = Math.sin(phase) * vh * ROAD_SLOPE_AMP * depth;
     const sec = roadSectionId();
-    if (sec === "bridge") dy -= vh * 0.068 * (0.25 + 0.75 * zz); // rise onto deck
-    else if (sec === "cave") dy += vh * 0.060 * (0.25 + 0.75 * zz); // descend in
+    if (sec === "bridge") dy -= vh * 0.068 * (0.25 + 0.75 * zz); // rise onto deck (keep)
+    else if (sec === "cave") dy += vh * 0.078 * (0.25 + 0.75 * zz); // descend +1 notch
     return dy;
   }
 
@@ -3178,13 +3181,22 @@
     const far = roadEdges(0, vw, vh);
     const near = roadEdges(1, vw, vh);
 
-    // grass shoulders
-    const grass = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
-    grass.addColorStop(0, "#4caf50");
-    grass.addColorStop(0.5, "#3d9e45");
-    grass.addColorStop(1, "#2e8b3a");
-    ctx.fillStyle = grass;
-    ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+    // shoulders: grass on plain/bridge; opaque rock bed in cave (no green leak)
+    if (roadSectionId() === "cave") {
+      const rockBed = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
+      rockBed.addColorStop(0, "#1a1410");
+      rockBed.addColorStop(0.5, "#2a2018");
+      rockBed.addColorStop(1, "#3a2c22");
+      ctx.fillStyle = rockBed;
+      ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+    } else {
+      const grass = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
+      grass.addColorStop(0, "#4caf50");
+      grass.addColorStop(0.5, "#3d9e45");
+      grass.addColorStop(1, "#2e8b3a");
+      ctx.fillStyle = grass;
+      ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+    }
 
     // dirt road body — multi-seg for gentle curveDx bend
     ctx.beginPath();
@@ -3267,44 +3279,42 @@
       if (drawing) ctx.stroke();
     }
 
-    // roadside posts / lights scrolling
-    for (let i = 0; i < 8; i++) {
-      const z = ((i / 8) + (roadScroll / 520) % 1) % 1;
-      if (z < 0.02 || z > 0.98) continue;
-      const e = roadEdges(z, vw, vh);
-      const sc = 0.35 + z * 0.9;
-      for (const side of [-1, 1]) {
-        const x = side < 0 ? e.left - 14 * sc : e.right + 14 * sc;
-        // post
-        ctx.fillStyle = "#6b7280";
-        ctx.fillRect(x - 2 * sc, e.y - 28 * sc, 4 * sc, 28 * sc);
-        // lamp
-        ctx.fillStyle = "#fbbf24";
-        ctx.beginPath();
-        ctx.arc(x, e.y - 30 * sc, 5 * sc, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "rgba(251,191,36,0.25)";
-        ctx.beginPath();
-        ctx.arc(x, e.y - 30 * sc, 12 * sc, 0, Math.PI * 2);
-        ctx.fill();
+    // roadside posts / lights + grass tufts — skip in cave (rock walls own the berm)
+    if (roadSectionId() !== "cave") {
+      for (let i = 0; i < 8; i++) {
+        const z = ((i / 8) + (roadScroll / 520) % 1) % 1;
+        if (z < 0.02 || z > 0.98) continue;
+        const e = roadEdges(z, vw, vh);
+        const sc = 0.35 + z * 0.9;
+        for (const side of [-1, 1]) {
+          const x = side < 0 ? e.left - 14 * sc : e.right + 14 * sc;
+          ctx.fillStyle = "#6b7280";
+          ctx.fillRect(x - 2 * sc, e.y - 28 * sc, 4 * sc, 28 * sc);
+          ctx.fillStyle = "#fbbf24";
+          ctx.beginPath();
+          ctx.arc(x, e.y - 30 * sc, 5 * sc, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(251,191,36,0.25)";
+          ctx.beginPath();
+          ctx.arc(x, e.y - 30 * sc, 12 * sc, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-    }
-
-    // grass tufts on shoulders
-    for (let i = 0; i < 12; i++) {
-      const z = ((i / 12) + (roadScroll / 640) % 1) % 1;
-      const e = roadEdges(z, vw, vh);
-      const sc = 0.4 + z;
-      const side = i % 2 === 0 ? -1 : 1;
-      const x = side < 0 ? e.left - 22 * sc : e.right + 22 * sc;
-      ctx.strokeStyle = "#1f7a35";
-      ctx.lineWidth = 1.5 * sc;
-      ctx.beginPath();
-      ctx.moveTo(x, e.y);
-      ctx.quadraticCurveTo(x - 4 * sc, e.y - 10 * sc, x + 2 * sc, e.y - 16 * sc);
-      ctx.moveTo(x, e.y);
-      ctx.quadraticCurveTo(x + 5 * sc, e.y - 8 * sc, x - 1 * sc, e.y - 14 * sc);
-      ctx.stroke();
+      for (let i = 0; i < 12; i++) {
+        const z = ((i / 12) + (roadScroll / 640) % 1) % 1;
+        const e = roadEdges(z, vw, vh);
+        const sc = 0.4 + z;
+        const side = i % 2 === 0 ? -1 : 1;
+        const x = side < 0 ? e.left - 22 * sc : e.right + 22 * sc;
+        ctx.strokeStyle = "#1f7a35";
+        ctx.lineWidth = 1.5 * sc;
+        ctx.beginPath();
+        ctx.moveTo(x, e.y);
+        ctx.quadraticCurveTo(x - 4 * sc, e.y - 10 * sc, x + 2 * sc, e.y - 16 * sc);
+        ctx.moveTo(x, e.y);
+        ctx.quadraticCurveTo(x + 5 * sc, e.y - 8 * sc, x - 1 * sc, e.y - 14 * sc);
+        ctx.stroke();
+      }
     }
   }
 
@@ -3826,7 +3836,7 @@
   }
 
 
-  /** road4 C: dramatic bridge berm+undergap+rails / cave walls+pinch+full dark. */
+  /** road5 C: bridge keep; cave opaque rock flush+tall faces+harder pinch. */
   function drawRoadSectionOverlay(vw, vh) {
     const sec = roadSectionId();
     if (sec === "plain") {
@@ -3942,64 +3952,90 @@
       }
       ctx.stroke();
     } else if (sec === "cave") {
-      // --- solid rock walls to NEAR field (cover grass/mud shoulders) ---
-      const wallGradL = ctx.createLinearGradient(0, 0, Math.max(8, near.left * 0.95), 0);
-      wallGradL.addColorStop(0, "rgba(4,3,2,1)");
-      wallGradL.addColorStop(0.4, "rgba(22,16,12,0.98)");
-      wallGradL.addColorStop(0.75, "rgba(38,28,20,0.92)");
-      wallGradL.addColorStop(1, "rgba(50,38,28,0.55)");
+      // --- road5: OPAQUE solid rock flush to road edge (no green shoulder / black void) ---
+      // Left wall: screen-left → road left (+encroach into lane for pinch read)
+      const wallGradL = ctx.createLinearGradient(0, 0, Math.max(12, near.left + 8), 0);
+      wallGradL.addColorStop(0, "#050403");
+      wallGradL.addColorStop(0.35, "#16110d");
+      wallGradL.addColorStop(0.7, "#2a2018");
+      wallGradL.addColorStop(1, "#3f3126"); // fully opaque at berm
       ctx.fillStyle = wallGradL;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(0, near.y + 60);
-      for (let z = 1; z >= -0.001; z -= 0.05) {
+      ctx.lineTo(0, vh);
+      ctx.lineTo(Math.max(0, near.left + 8), vh);
+      for (let z = 1; z >= -0.001; z -= 0.04) {
         const e = roadEdges(Math.max(0, z), vw, vh);
-        // rock face hugs road — thick near pinch
-        const inset = 4 + 8 * z;
-        ctx.lineTo(e.left - inset, e.y + 2);
+        const enc = 2 + 16 * z; // flush + near encroach (pinch)
+        ctx.lineTo(e.left + enc, e.y + 3);
       }
-      ctx.lineTo(far.left - 30, far.y - vh * 0.28);
+      ctx.lineTo(far.left - 24, far.y - vh * 0.32);
       ctx.lineTo(0, 0);
       ctx.closePath();
       ctx.fill();
-      const wallGradR = ctx.createLinearGradient(vw, 0, Math.min(vw - 8, near.right + (vw - near.right) * 0.05), 0);
-      wallGradR.addColorStop(0, "rgba(4,3,2,1)");
-      wallGradR.addColorStop(0.4, "rgba(22,16,12,0.98)");
-      wallGradR.addColorStop(0.75, "rgba(38,28,20,0.92)");
-      wallGradR.addColorStop(1, "rgba(50,38,28,0.55)");
+      // Right wall
+      const wallGradR = ctx.createLinearGradient(vw, 0, Math.min(vw - 12, near.right - 8), 0);
+      wallGradR.addColorStop(0, "#050403");
+      wallGradR.addColorStop(0.35, "#16110d");
+      wallGradR.addColorStop(0.7, "#2a2018");
+      wallGradR.addColorStop(1, "#3f3126");
       ctx.fillStyle = wallGradR;
       ctx.beginPath();
       ctx.moveTo(vw, 0);
-      ctx.lineTo(vw, near.y + 60);
-      for (let z = 1; z >= -0.001; z -= 0.05) {
+      ctx.lineTo(vw, vh);
+      ctx.lineTo(Math.min(vw, near.right - 8), vh);
+      for (let z = 1; z >= -0.001; z -= 0.04) {
         const e = roadEdges(Math.max(0, z), vw, vh);
-        const inset = 4 + 8 * z;
-        ctx.lineTo(e.right + inset, e.y + 2);
+        const enc = 2 + 16 * z;
+        ctx.lineTo(e.right - enc, e.y + 3);
       }
-      ctx.lineTo(far.right + 30, far.y - vh * 0.28);
+      ctx.lineTo(far.right + 24, far.y - vh * 0.32);
       ctx.lineTo(vw, 0);
       ctx.closePath();
       ctx.fill();
-      // Rock texture streaks on walls
-      ctx.strokeStyle = "rgba(0,0,0,0.45)";
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 7; i++) {
-        const z = 0.15 + i * 0.12;
+      // Tall rock faces rising from berm (near field must read as walls, not grass)
+      for (let z = 0.10; z <= 1.001; z += 0.055) {
+        const e = roadEdges(Math.min(1, z), vw, vh);
+        const enc = 2 + 16 * z;
+        const h = 32 + 120 * z;
+        const faceW = 12 + 42 * z;
+        // left face
+        const gL = ctx.createLinearGradient(e.left + enc - faceW, e.y, e.left + enc, e.y);
+        gL.addColorStop(0, "rgba(8,6,5,0.98)");
+        gL.addColorStop(0.55, "rgba(40,30,22,1)");
+        gL.addColorStop(1, "rgba(58,44,32,1)");
+        ctx.fillStyle = gL;
+        ctx.fillRect(e.left + enc - faceW, e.y - h, faceW + 1, h + 6);
+        // right face
+        const gR = ctx.createLinearGradient(e.right - enc + faceW, e.y, e.right - enc, e.y);
+        gR.addColorStop(0, "rgba(8,6,5,0.98)");
+        gR.addColorStop(0.55, "rgba(40,30,22,1)");
+        gR.addColorStop(1, "rgba(58,44,32,1)");
+        ctx.fillStyle = gR;
+        ctx.fillRect(e.right - enc - 1, e.y - h, faceW + 1, h + 6);
+      }
+      // Rock grain / strata on faces
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.lineWidth = 2.2;
+      for (let i = 0; i < 8; i++) {
+        const z = 0.12 + i * 0.11;
         const e = roadEdges(z, vw, vh);
+        const enc = 2 + 16 * z;
+        const h = 32 + 120 * z;
         ctx.beginPath();
-        ctx.moveTo(e.left - 6 - 18 * z, e.y - 10 * z);
-        ctx.lineTo(e.left - 2, e.y + 4);
+        ctx.moveTo(e.left + enc - (10 + 30 * z), e.y - h * 0.55);
+        ctx.lineTo(e.left + enc, e.y - 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(e.right + 6 + 18 * z, e.y - 10 * z);
-        ctx.lineTo(e.right + 2, e.y + 4);
+        ctx.moveTo(e.right - enc + (10 + 30 * z), e.y - h * 0.55);
+        ctx.lineTo(e.right - enc, e.y - 2);
         ctx.stroke();
       }
-      // LARGE cave mouth silhouette (arch covers big chunk of sky/far)
+      // LARGE cave mouth silhouette (arch — keep; already PASS)
       const mouthCx = (far.left + far.right) * 0.5;
       const mouthHalf = Math.max(vw * 0.28, (far.right - far.left) * 0.95 + 48);
       const mouthTop = Math.max(8, far.y - vh * 0.38);
-      ctx.fillStyle = "rgba(0,0,0,0.88)";
+      ctx.fillStyle = "rgba(0,0,0,0.90)";
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(vw, 0);
@@ -4021,7 +4057,7 @@
       ctx.strokeStyle = "rgba(110,90,65,0.7)";
       ctx.lineWidth = 3;
       ctx.stroke();
-      // WHOLE tunnel dark — including ROAD SURFACE
+      // WHOLE tunnel dark — including ROAD SURFACE (keep)
       ctx.beginPath();
       for (let z = 0; z <= 1.001; z += 0.05) {
         const e = roadEdges(Math.min(1, z), vw, vh);
@@ -4033,22 +4069,22 @@
         ctx.lineTo(e.right, e.y);
       }
       ctx.closePath();
-      ctx.fillStyle = "rgba(0,0,0,0.52)";
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fill();
-      // Heavy vignette (corners + overall)
+      // Heavy vignette
       const vig = ctx.createRadialGradient(vw * 0.5, vh * 0.55, vh * 0.04, vw * 0.5, vh * 0.5, vh * 0.85);
-      vig.addColorStop(0, "rgba(0,0,0,0.15)");
-      vig.addColorStop(0.35, "rgba(0,0,0,0.42)");
-      vig.addColorStop(0.7, "rgba(0,0,0,0.68)");
-      vig.addColorStop(1, "rgba(0,0,0,0.88)");
+      vig.addColorStop(0, "rgba(0,0,0,0.18)");
+      vig.addColorStop(0.35, "rgba(0,0,0,0.45)");
+      vig.addColorStop(0.7, "rgba(0,0,0,0.70)");
+      vig.addColorStop(1, "rgba(0,0,0,0.90)");
       ctx.fillStyle = vig;
       ctx.fillRect(0, 0, vw, vh);
-      // Extra top/side crush for pinch read
+      // Side crush reinforces pinch (walls encroaching)
       const sideV = ctx.createLinearGradient(0, 0, vw, 0);
-      sideV.addColorStop(0, "rgba(0,0,0,0.55)");
-      sideV.addColorStop(0.22, "rgba(0,0,0,0)");
-      sideV.addColorStop(0.78, "rgba(0,0,0,0)");
-      sideV.addColorStop(1, "rgba(0,0,0,0.55)");
+      sideV.addColorStop(0, "rgba(0,0,0,0.62)");
+      sideV.addColorStop(0.18, "rgba(0,0,0,0)");
+      sideV.addColorStop(0.82, "rgba(0,0,0,0)");
+      sideV.addColorStop(1, "rgba(0,0,0,0.62)");
       ctx.fillStyle = sideV;
       ctx.fillRect(0, 0, vw, vh);
     }

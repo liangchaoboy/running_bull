@@ -1,0 +1,24 @@
+# road5 Road — cave darker + harder size pinch; bridge keep
+# Paste in Road forever (non-rush) when running:
+# say alone is NOT enough — Brightness must crush cave; size must pinch.
+
+		if running {
+			# plain breathe; bridge deck keep; cave harder pinch
+			sz = 1.48
+			if secSlot == 1 {
+				sz = 1.38
+			} else if secSlot == 2 {
+				sz = 1.10
+			}
+			setSize sz * (1 + math.Sin(runT * 0.85) * 0.08)
+			if secSlot == 2 {
+				setGraphicEffect BrightnessEffect, -85
+			} else if secSlot == 1 {
+				setGraphicEffect BrightnessEffect, 16
+			} else {
+				setGraphicEffect BrightnessEffect, 0
+			}
+		} else {
+			setSize 1.48
+			setGraphicEffect BrightnessEffect, 0
+		}

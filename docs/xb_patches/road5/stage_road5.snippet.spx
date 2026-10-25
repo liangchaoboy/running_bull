@@ -1,0 +1,54 @@
+# road5 Stage — PLAIN whip curveAmp + cave descend +1 notch
+# Vars (keep): prevSecSlot float64, slopeBob float64
+# Paste over road4 curve block inside forever:
+
+		if running {
+			curvePhase = curvePhase + 0.007
+			if curvePhase > 6.28318 {
+				curvePhase = curvePhase - 6.28318
+			}
+			# road5 A: ~1.5× road4 amps — PLAIN must beat lane-change
+			curveAmp = 130
+			if mapId == 3 {
+				curveAmp = 185
+			} else if mapId == 7 {
+				curveAmp = 175
+			} else if mapId == 5 {
+				curveAmp = 85
+			} else if mapId == 6 {
+				curveAmp = 118
+			} else if mapId == 4 {
+				curveAmp = 110
+			}
+			secSlot = float64(int(runT/8) % 3)
+			if secSlot == 0 {
+				curveAmp = curveAmp * 1.12
+			} else if secSlot == 1 {
+				curveAmp = curveAmp * 1.45
+			} else if secSlot == 2 {
+				curveAmp = curveAmp * 1.12
+			}
+			if secSlot != prevSecSlot {
+				prevSecSlot = secSlot
+				if secSlot == 1 {
+					broadcast "secbridge"
+				} else if secSlot == 2 {
+					broadcast "seccave"
+				}
+			}
+			curveBend = curveBend + (math.Sin(curvePhase)*curveAmp - curveBend)*0.06
+			# road5 B: bridge rise keep (+28); cave descend +1 notch (−38)
+			slopeBob = math.Sin(runT * 1.05) * 38
+			if secSlot == 1 {
+				slopeBob = slopeBob + 28
+			} else if secSlot == 2 {
+				slopeBob = slopeBob - 38
+			}
+			Camera.setXYpos 0, 75 + slopeBob
+		} else {
+			curveBend = curveBend * 0.85
+			if curveBend < 0.4 && curveBend > -0.4 {
+				curveBend = 0
+			}
+			Camera.setXYpos 0, 75
+		}
