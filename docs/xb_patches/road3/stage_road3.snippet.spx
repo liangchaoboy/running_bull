@@ -1,0 +1,52 @@
+# road3 Stage — stronger curveAmp + sec announce + Camera slope bob
+# Vars add: prevSecSlot float64, slopeBob float64
+# Paste over feel2 curve block inside forever:
+
+		if running {
+			curvePhase = curvePhase + 0.007
+			if curvePhase > 6.28318 {
+				curvePhase = curvePhase - 6.28318
+			}
+			# road3 A: ~1.8× feel2 amps (default/dirt most); forest/plane higher
+			curveAmp = 52
+			if mapId == 3 {
+				curveAmp = 78
+			} else if mapId == 7 {
+				curveAmp = 72
+			} else if mapId == 5 {
+				curveAmp = 34
+			} else if mapId == 6 {
+				curveAmp = 48
+			} else if mapId == 4 {
+				curveAmp = 44
+			}
+			secSlot = float64(int(runT/8) % 3)
+			if secSlot == 1 {
+				curveAmp = curveAmp * 1.28
+			} else if secSlot == 2 {
+				curveAmp = curveAmp * 0.95
+			}
+			if secSlot != prevSecSlot {
+				prevSecSlot = secSlot
+				if secSlot == 1 {
+					broadcast "secbridge"
+				} else if secSlot == 2 {
+					broadcast "seccave"
+				}
+			}
+			curveBend = curveBend + (math.Sin(curvePhase)*curveAmp - curveBend)*0.05
+			# road3 B: visible horizon / path rise-fall
+			slopeBob = math.Sin(runT * 1.05) * 22
+			if secSlot == 1 {
+				slopeBob = slopeBob + 14
+			} else if secSlot == 2 {
+				slopeBob = slopeBob - 16
+			}
+			Camera.setXYpos 0, 75 + slopeBob
+		} else {
+			curveBend = curveBend * 0.85
+			if curveBend < 0.4 && curveBend > -0.4 {
+				curveBend = 0
+			}
+			Camera.setXYpos 0, 75
+		}

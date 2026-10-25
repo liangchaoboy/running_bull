@@ -1,3 +1,13 @@
+## 2026-10-25 · bgm2（激情澎湃 Bravery Run）
+
+- 换曲：**Bravery Run** by MintoDog（CC0）→ `assets/bgm/parkour_loop.ogg`（~2.02 MB）；弃国风 / 弃轻松 chiptune。
+- 音量 `BGM_VOL = 0.40`；右上角静音 + `rb_bgm_muted`；`?v=bgm2`（game.js / style.css）。
+- 详见 [`BGM2_NOTES.md`](BGM2_NOTES.md)、`mobile-web/assets/bgm/CREDITS.md`。
+
+## 2026-10-25 · road3 / feel3（弯道·坡度·山洞可读性）
+
+- 弯道 amp ~1.6–2.0×（默认/泥土最明显）+ 近端 depth 夸张；坡度 `ROAD_SLOPE_AMP` ~2.2×；山洞洞口剪影+更暗+进段「进入山洞」/「过桥」横幅；桥护栏加粗。XB：`docs/xb_patches/road3/APPLY_ROAD3.md`（待 Publish）。不动 BGM / LANE_SNAP / 植物。`?v=road3`。
+
 ## 2026-10-25 · bgm1（国风轻松循环 BGM + 静音）
 
 - mobile-web：**国风轻松** CC0 循环曲 `assets/bgm/parkour_loop.ogg`（neolein — *A ride through chinese valley*，非 chiptune）；开跑/再来手势启播；右上角 🔊/🔇；`localStorage.rb_bgm_muted`；`?v=bgm1`。

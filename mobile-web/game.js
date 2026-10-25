@@ -94,20 +94,21 @@
   const BOOST_LOCK = 0.1;
   const BOOST_LANE_SNAP = 0.55;
   const BOOST_LANE_LERP = 36;
-  /** feel2 road A+B+C: curve whip, width/slope, section themes (bridge/cave). */
+  /** road3 / feel3: obvious curve whip, slope bob, cave/bridge readability. */
   const ROAD_WIDTH_K = 0.026;
-  const ROAD_WIDTH_AMP = 0.11;
-  const ROAD_SLOPE_K = 0.021;
-  const ROAD_SLOPE_AMP = 0.028;
+  const ROAD_WIDTH_AMP = 0.16;
+  const ROAD_SLOPE_K = 0.024;
+  const ROAD_SLOPE_AMP = 0.062;
   const ROAD_SECTION_LEN = 160;
-  const CURVE_K_DEFAULT = 0.030;
-  const CURVE_AMP_DEFAULT = 0.042;
-  const CURVE_K_PLANT = 0.028;
-  const CURVE_AMP_PLANT = 0.038;
-  const CURVE_K_SPACE = 0.024;
-  const CURVE_AMP_SPACE = 0.035;
-  const CURVE_K_CHILL = 0.018;
-  const CURVE_AMP_CHILL = 0.028;
+  const CURVE_K_DEFAULT = 0.034;
+  const CURVE_AMP_DEFAULT = 0.080;
+  const CURVE_K_PLANT = 0.032;
+  const CURVE_AMP_PLANT = 0.072;
+  const CURVE_K_SPACE = 0.028;
+  const CURVE_AMP_SPACE = 0.066;
+  const CURVE_K_CHILL = 0.022;
+  const CURVE_AMP_CHILL = 0.050;
+  const SECTION_BANNER_SEC = 1.2;
   /** 撞障激励广告：观看冻结；看完后短暂无敌 + 短道具。 */
   const REWARD_AD_DURATION = 2.0;
   const REWARD_AD_INVULN = 1.8;
@@ -127,12 +128,12 @@
   const ROAD_HALF_FAR_SPACE = 0.065;
   const ROAD_HALF_NEAR_SPACE = 0.54;
   /** 优美森林 / 土路：灭点与路心横向弯道（相对 vw）。 */
-  const CURVE_K_FOREST = 0.038;
-  const CURVE_AMP_FOREST = 0.075;
-  const CURVE_K_EARTH = 0.032;
-  const CURVE_AMP_EARTH = 0.055;
-  const CURVE_K_PLANE = 0.036;
-  const CURVE_AMP_PLANE = 0.065;
+  const CURVE_K_FOREST = 0.042;
+  const CURVE_AMP_FOREST = 0.120;
+  const CURVE_K_EARTH = 0.036;
+  const CURVE_AMP_EARTH = 0.100;
+  const CURVE_K_PLANE = 0.040;
+  const CURVE_AMP_PLANE = 0.110;
   /** 飞机大战：默认扫射间隔；小怪/大怪 HP */
   const PLANE_FIRE_INTERVAL = 0.14;
   const PLANE_HP_SMALL = 3;
@@ -374,6 +375,10 @@
   /** 当前挡路障碍（看完才移除；跳过则保留）。 */
   let pendingHitObstacle = null;
   let rewardToastT = 0;
+  /** road3: section enter banner (过桥 / 进入山洞). */
+  let sectionBannerT = 0;
+  let sectionBannerText = "";
+  let lastRoadSec = "plain";
   let rewardAdToken = 0;
   /** Rewarded continues used this run; ≥ REWARD_CONTINUE_MAX → next hit is fatal. */
   let rewardContinueUsed = 0;
@@ -1091,7 +1096,7 @@
     return { w: rect.width || W, h: rect.height || H };
   }
 
-  /** feel2 A: visible left/right road whip — all modes (chill gentlest). */
+  /** road3 A: obvious left/right road whip — near-field exaggerated. */
   function curveDx(z, vw) {
     let k = CURVE_K_DEFAULT;
     let ampFrac = CURVE_AMP_DEFAULT;
@@ -1114,39 +1119,42 @@
       k = CURVE_K_CHILL;
       ampFrac = CURVE_AMP_CHILL;
     }
-    // Bridge sections: slightly stronger sway; caves: tighter.
+    // Bridge: stronger sway; caves: still readable (less pinched than feel2).
     const sec = roadSectionId();
-    if (sec === "bridge") ampFrac *= 1.15;
-    else if (sec === "cave") ampFrac *= 0.85;
+    if (sec === "bridge") ampFrac *= 1.28;
+    else if (sec === "cave") ampFrac *= 0.95;
     const zz = Math.max(0, Math.min(1, z));
     const phase = distance * k - (1 - zz) * 0.85;
-    const depth = 0.4 + 0.6 * zz;
+    // Near exaggeration: almost flat far, whip hard near camera.
+    const depth = 0.12 + 0.88 * Math.pow(zz, 1.35);
     return Math.sin(phase) * vw * ampFrac * depth;
   }
 
-  /** feel2 B: near-bed width breathe. */
+  /** road3 B: near-bed width breathe (wider amp). */
   function roadWidthMul(z) {
     const zz = Math.max(0, Math.min(1, z));
     const phase = distance * ROAD_WIDTH_K - (1 - zz) * 0.55;
-    const depth = 0.4 + 0.6 * zz;
+    const depth = 0.25 + 0.75 * Math.pow(zz, 1.2);
     let mul = 1 + Math.sin(phase) * ROAD_WIDTH_AMP * depth;
     const sec = roadSectionId();
-    if (sec === "bridge") mul *= 0.92; // narrower causeway
-    else if (sec === "cave") mul *= 0.88; // tunnel pinch
+    if (sec === "bridge") mul *= 0.88; // narrower causeway
+    else if (sec === "cave") mul *= 0.82; // tunnel pinch
     return mul;
   }
 
-  /** feel2 B: gentle hill / depth bob. */
+  /** road3 B: obvious hill / horizon bob (~2× feel2). */
   function roadSlopeDy(z, vh) {
     const zz = Math.max(0, Math.min(1, z));
     const phase = distance * ROAD_SLOPE_K - (1 - zz) * 0.65;
-    const depth = 0.3 + 0.7 * zz;
+    const depth = 0.2 + 0.8 * Math.pow(zz, 1.15);
     let dy = Math.sin(phase) * vh * ROAD_SLOPE_AMP * depth;
-    if (roadSectionId() === "bridge") dy -= vh * 0.012 * zz; // rise onto bridge
+    const sec = roadSectionId();
+    if (sec === "bridge") dy -= vh * 0.028 * zz; // rise onto bridge
+    else if (sec === "cave") dy += vh * 0.024 * zz; // descend into cave
     return dy;
   }
 
-  /** feel2 C: plain → bridge → cave cycle by distance. */
+  /** feel2/road3 C: plain → bridge → cave cycle by distance. */
   function roadSectionId() {
     const slot = Math.floor(Math.max(0, distance) / ROAD_SECTION_LEN) % 3;
     return slot === 1 ? "bridge" : slot === 2 ? "cave" : "plain";
@@ -1155,6 +1163,27 @@
   function roadSectionLabel() {
     const s = roadSectionId();
     return s === "bridge" ? "桥" : s === "cave" ? "山洞" : "";
+  }
+
+  function roadSectionEnterText(sec) {
+    if (sec === "bridge") return "过桥";
+    if (sec === "cave") return "进入山洞";
+    return "";
+  }
+
+  function tickRoadSectionBanner() {
+    const sec = roadSectionId();
+    if (sec !== lastRoadSec) {
+      const enter = roadSectionEnterText(sec);
+      if (enter) {
+        sectionBannerText = enter;
+        sectionBannerT = SECTION_BANNER_SEC;
+      } else {
+        sectionBannerText = "";
+        sectionBannerT = 0;
+      }
+      lastRoadSec = sec;
+    }
   }
 
   /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom).
@@ -1254,6 +1283,9 @@
     rewardAdT = 0;
     pendingHitObstacle = null;
     rewardToastT = 0;
+    sectionBannerT = 0;
+    sectionBannerText = "";
+    lastRoadSec = "plain";
     rewardContinueUsed = 0;
     braveStacks = 0;
     nearMissCd = 0;
@@ -2604,6 +2636,11 @@
     const zSpeed = (moveSpeed / 420) * (mode === "chill" ? 0.42 : 0.50);
     roadScroll += moveSpeed * dt;
     distance += (moveSpeed * dt) / 18;
+    tickRoadSectionBanner();
+    if (sectionBannerT > 0) {
+      sectionBannerT -= dt;
+      if (sectionBannerT < 0) sectionBannerT = 0;
+    }
     // Steady stride: base cadence + light speed coupling (less "panic legs").
     runPhase += dt * (2.15 + moveSpeed * 0.0055);
     sessionPlaySec += dt;
@@ -3788,94 +3825,153 @@
   }
 
 
-  /** feel2 C: bridge rails / cave walls + vignette over current road. */
+  /** road3 C: beefier bridge rails / cave mouth silhouette + dark vignette + enter banner. */
   function drawRoadSectionOverlay(vw, vh) {
     const sec = roadSectionId();
-    if (sec === "plain") return;
+    if (sec === "plain") {
+      drawSectionEnterBanner(vw, vh);
+      return;
+    }
     const far = roadEdges(0.05, vw, vh);
     const near = roadEdges(0.98, vw, vh);
     if (sec === "bridge") {
-      // side rail posts
-      ctx.strokeStyle = "rgba(220,230,240,0.7)";
-      ctx.fillStyle = "rgba(180,190,200,0.55)";
-      ctx.lineWidth = 2;
-      for (let z = 0.15; z <= 0.95; z += 0.08) {
+      // side rail posts (thicker / taller than feel2)
+      ctx.strokeStyle = "rgba(230,238,248,0.88)";
+      ctx.fillStyle = "rgba(200,210,222,0.78)";
+      ctx.lineWidth = 3.5;
+      for (let z = 0.12; z <= 0.96; z += 0.07) {
         const e = roadEdges(z, vw, vh);
-        const h = 10 + 28 * z;
-        ctx.fillRect(e.left - 4 * z, e.y - h, Math.max(2, 3 * z), h);
-        ctx.fillRect(e.right - Math.max(2, 3 * z) + 4 * z, e.y - h, Math.max(2, 3 * z), h);
+        const h = 14 + 36 * z;
+        const pw = Math.max(3, 5 * z);
+        ctx.fillRect(e.left - 6 * z, e.y - h, pw, h);
+        ctx.fillRect(e.right - pw + 6 * z, e.y - h, pw, h);
       }
-      // rail lines
-      ctx.beginPath();
-      for (let z = 0; z <= 1.001; z += 0.05) {
-        const e = roadEdges(Math.min(1, z), vw, vh);
-        const yy = e.y - (8 + 22 * z);
-        if (z === 0) ctx.moveTo(e.left - 2, yy);
-        else ctx.lineTo(e.left - 2, yy);
+      // double rail lines
+      for (const lift of [0, 10]) {
+        ctx.beginPath();
+        for (let z = 0; z <= 1.001; z += 0.05) {
+          const e = roadEdges(Math.min(1, z), vw, vh);
+          const yy = e.y - (10 + 26 * z) - lift * z;
+          if (z === 0) ctx.moveTo(e.left - 3, yy);
+          else ctx.lineTo(e.left - 3, yy);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        for (let z = 0; z <= 1.001; z += 0.05) {
+          const e = roadEdges(Math.min(1, z), vw, vh);
+          const yy = e.y - (10 + 26 * z) - lift * z;
+          if (z === 0) ctx.moveTo(e.right + 3, yy);
+          else ctx.lineTo(e.right + 3, yy);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
-      ctx.beginPath();
-      for (let z = 0; z <= 1.001; z += 0.05) {
-        const e = roadEdges(Math.min(1, z), vw, vh);
-        const yy = e.y - (8 + 22 * z);
-        if (z === 0) ctx.moveTo(e.right + 2, yy);
-        else ctx.lineTo(e.right + 2, yy);
-      }
-      ctx.stroke();
       // under-bridge shadow strip at far
-      ctx.fillStyle = "rgba(30,40,60,0.25)";
-      ctx.fillRect(0, far.y - 8, vw, 18);
+      ctx.fillStyle = "rgba(20,30,50,0.42)";
+      ctx.fillRect(0, far.y - 12, vw, 26);
     } else if (sec === "cave") {
-      // rock walls left/right outside road
-      const wallGradL = ctx.createLinearGradient(0, 0, near.left, 0);
-      wallGradL.addColorStop(0, "rgba(20,16,12,0.92)");
-      wallGradL.addColorStop(1, "rgba(40,32,24,0.15)");
+      // thicker rock walls left/right
+      const wallGradL = ctx.createLinearGradient(0, 0, near.left * 0.85, 0);
+      wallGradL.addColorStop(0, "rgba(8,6,4,0.97)");
+      wallGradL.addColorStop(0.55, "rgba(28,22,16,0.85)");
+      wallGradL.addColorStop(1, "rgba(40,32,24,0.28)");
       ctx.fillStyle = wallGradL;
       ctx.beginPath();
-      ctx.moveTo(0, far.y - 40);
-      ctx.lineTo(far.left - 8, far.y);
-      for (let z = 0; z <= 1.001; z += 0.08) {
+      ctx.moveTo(0, far.y - 70);
+      ctx.lineTo(far.left - 18, far.y - 8);
+      for (let z = 0; z <= 1.001; z += 0.07) {
         const e = roadEdges(Math.min(1, z), vw, vh);
-        ctx.lineTo(e.left - 6 - 10 * z, e.y);
+        ctx.lineTo(e.left - 10 - 22 * z, e.y);
       }
-      ctx.lineTo(0, near.y + 40);
+      ctx.lineTo(0, near.y + 50);
       ctx.closePath();
       ctx.fill();
-      const wallGradR = ctx.createLinearGradient(vw, 0, near.right, 0);
-      wallGradR.addColorStop(0, "rgba(20,16,12,0.92)");
-      wallGradR.addColorStop(1, "rgba(40,32,24,0.15)");
+      const wallGradR = ctx.createLinearGradient(vw, 0, near.right + (vw - near.right) * 0.15, 0);
+      wallGradR.addColorStop(0, "rgba(8,6,4,0.97)");
+      wallGradR.addColorStop(0.55, "rgba(28,22,16,0.85)");
+      wallGradR.addColorStop(1, "rgba(40,32,24,0.28)");
       ctx.fillStyle = wallGradR;
       ctx.beginPath();
-      ctx.moveTo(vw, far.y - 40);
-      ctx.lineTo(far.right + 8, far.y);
-      for (let z = 0; z <= 1.001; z += 0.08) {
+      ctx.moveTo(vw, far.y - 70);
+      ctx.lineTo(far.right + 18, far.y - 8);
+      for (let z = 0; z <= 1.001; z += 0.07) {
         const e = roadEdges(Math.min(1, z), vw, vh);
-        ctx.lineTo(e.right + 6 + 10 * z, e.y);
+        ctx.lineTo(e.right + 10 + 22 * z, e.y);
       }
-      ctx.lineTo(vw, near.y + 40);
+      ctx.lineTo(vw, near.y + 50);
       ctx.closePath();
       ctx.fill();
-      // cave mouth / vignette
-      const vig = ctx.createRadialGradient(vw * 0.5, vh * 0.45, vh * 0.12, vw * 0.5, vh * 0.5, vh * 0.72);
+      // cave mouth silhouette (arch at far)
+      const mouthCx = (far.left + far.right) * 0.5;
+      const mouthHalf = (far.right - far.left) * 0.62 + 28;
+      const mouthTop = far.y - vh * 0.22;
+      ctx.fillStyle = "rgba(0,0,0,0.72)";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(vw, 0);
+      ctx.lineTo(vw, far.y + 8);
+      ctx.lineTo(mouthCx + mouthHalf, far.y + 8);
+      ctx.quadraticCurveTo(mouthCx + mouthHalf * 0.55, mouthTop, mouthCx, mouthTop);
+      ctx.quadraticCurveTo(mouthCx - mouthHalf * 0.55, mouthTop, mouthCx - mouthHalf, far.y + 8);
+      ctx.lineTo(0, far.y + 8);
+      ctx.closePath();
+      ctx.fill();
+      // rock rim highlight on mouth
+      ctx.strokeStyle = "rgba(90,70,50,0.75)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(mouthCx - mouthHalf, far.y + 6);
+      ctx.quadraticCurveTo(mouthCx - mouthHalf * 0.55, mouthTop + 4, mouthCx, mouthTop + 4);
+      ctx.quadraticCurveTo(mouthCx + mouthHalf * 0.55, mouthTop + 4, mouthCx + mouthHalf, far.y + 6);
+      ctx.stroke();
+      // darker vignette
+      const vig = ctx.createRadialGradient(vw * 0.5, vh * 0.48, vh * 0.08, vw * 0.5, vh * 0.52, vh * 0.78);
       vig.addColorStop(0, "rgba(0,0,0,0)");
-      vig.addColorStop(0.55, "rgba(0,0,0,0.15)");
-      vig.addColorStop(1, "rgba(0,0,0,0.55)");
+      vig.addColorStop(0.4, "rgba(0,0,0,0.28)");
+      vig.addColorStop(0.75, "rgba(0,0,0,0.55)");
+      vig.addColorStop(1, "rgba(0,0,0,0.78)");
       ctx.fillStyle = vig;
       ctx.fillRect(0, 0, vw, vh);
     }
     const label = roadSectionLabel();
     if (label) {
       ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.font = "bold 13px sans-serif";
+      ctx.globalAlpha = 0.9;
+      ctx.font = "bold 14px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillStyle = sec === "cave" ? "#e7e5e4" : "#e0f2fe";
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.fillStyle = sec === "cave" ? "#f5f5f4" : "#e0f2fe";
+      ctx.strokeStyle = "rgba(0,0,0,0.65)";
       ctx.lineWidth = 3;
       ctx.strokeText(label, vw * 0.5, vh * 0.11);
       ctx.fillText(label, vw * 0.5, vh * 0.11);
       ctx.restore();
     }
+    drawSectionEnterBanner(vw, vh);
+  }
+
+  function drawSectionEnterBanner(vw, vh) {
+    if (sectionBannerT <= 0 || !sectionBannerText) return;
+    const a = Math.min(1, sectionBannerT / 0.25) * Math.min(1, (SECTION_BANNER_SEC - sectionBannerT + 0.01) / 0.2);
+    const fade = Math.max(0, Math.min(1, a));
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.4 * fade;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    const bw = Math.min(vw * 0.72, 280);
+    const bh = 36;
+    const bx = (vw - bw) * 0.5;
+    const by = vh * 0.18;
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+    ctx.font = "bold 20px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.strokeStyle = "rgba(0,0,0,0.7)";
+    ctx.lineWidth = 4;
+    ctx.fillStyle = "#fff7ed";
+    ctx.strokeText(sectionBannerText, vw * 0.5, by + bh * 0.5);
+    ctx.fillText(sectionBannerText, vw * 0.5, by + bh * 0.5);
+    ctx.restore();
   }
 
   function drawZombieObstacle(p, tall) {
@@ -5469,7 +5565,7 @@
   // --- BGM (CC0 loop) ---
   const LS_BGM_MUTED = "rb_bgm_muted";
   const BGM_SRC = "assets/bgm/parkour_loop.ogg";
-  const BGM_VOL = 0.32;
+  const BGM_VOL = 0.40;
   let bgmMuted = false;
   try {
     bgmMuted = localStorage.getItem(LS_BGM_MUTED) === "1";

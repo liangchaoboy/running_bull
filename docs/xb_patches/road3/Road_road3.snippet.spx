@@ -1,0 +1,16 @@
+# road3 Road — stronger cave dark + bridge lift + wider size breathe
+# Paste in Road forever (non-rush) when running:
+
+		if running {
+			setSize 1.48 * (1 + math.Sin(runT * 0.85) * 0.10)
+			if secSlot == 2 {
+				setGraphicEffect BrightnessEffect, -48
+			} else if secSlot == 1 {
+				setGraphicEffect BrightnessEffect, 10
+			} else {
+				setGraphicEffect BrightnessEffect, 0
+			}
+		} else {
+			setSize 1.48
+			setGraphicEffect BrightnessEffect, 0
+		}
