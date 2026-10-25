@@ -69,6 +69,8 @@
   const JUMP_HEIGHT = 125;
   const JUMP_BUFFER = 0.14;
   const JUMP_LAND_GRACE = 0.12;
+  /** Subway-style roll/slide: short, hard-cut pose (no blend). */
+  const SLIDE_DURATION = 0.42;
   const HIT_Z_MIN = 0.70;
   const HIT_Z_MAX = 0.82;
   /** Ease: slower start + gentler ramp (was 280→520 @ 0.35). */
@@ -90,9 +92,10 @@
   const CHILL_TIME_PTS = 10;
   const CHILL_COIN_BONUS = 1;
   /** Lane visual follow: higher = snappier (was ~14). */
-  const LANE_LERP = 30;
+  /** Snap-ish lane (Subway/Zurich): little long-lerp. Refine when free 3-lane measured. */
+  const LANE_LERP = 48;
   /** Immediate snap fraction on lane change so first frame moves. */
-  const LANE_SNAP = 0.58;
+  const LANE_SNAP = 0.78;
   /** Swipe axis threshold in CSS px (was 40). */
   const SWIPE_AXIS_MIN = 18;
   const SWIPE_TAP_MAX = 22;
@@ -141,6 +144,8 @@
     jumping: false,
     jumpBuffered: 0,
     landGrace: 0,
+    sliding: false,
+    slideT: 0,
   };
 
   /** @type {Array<{lane:number,z:number,kind:string,alive:boolean,variant?:string,tall?:boolean}>} */
@@ -561,6 +566,8 @@
     player.jumping = false;
     player.jumpBuffered = 0;
     player.landGrace = 0;
+    player.sliding = false;
+    player.slideT = 0;
     entities = [];
     bombs = [];
     particles = [];
@@ -684,6 +691,9 @@
       }
       return;
     }
+    // Hard-cut out of slide into jump (no pose blend).
+    player.sliding = false;
+    player.slideT = 0;
     player.jumping = true;
     player.jumpT = 0;
     player.jumpBuffered = 0;
@@ -692,6 +702,26 @@
 
   function isJumpClearing() {
     return player.jumping || player.landGrace > 0;
+  }
+
+  /** Slide clears low props; tall still needs jump (or invuln). */
+  function isObstacleClearing(e) {
+    if (isInvulnerable()) return true;
+    if (isJumpClearing()) return true;
+    if (player.sliding && !(e && e.tall)) return true;
+    return false;
+  }
+
+  function slide() {
+    if (!running || dead || deathFx) return;
+    if (player.sliding) return;
+    // Hard-cut: cancel jump pose instantly (no blend).
+    player.jumping = false;
+    player.jumpT = 0;
+    player.jumpBuffered = 0;
+    player.landGrace = 0;
+    player.sliding = true;
+    player.slideT = 0;
   }
 
   function bombColors() {
@@ -1036,7 +1066,8 @@
     const zSpeed = (speed / 420) * (mode === "chill" ? 0.42 : 0.50);
     roadScroll += speed * dt;
     distance += (speed * dt) / 18;
-    runPhase += dt * (speed / 80);
+    // Steady stride: base cadence + light speed coupling (less "panic legs").
+    runPhase += dt * (1.9 + speed * 0.0035);
     sessionPlaySec += dt;
 
     player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * LANE_LERP);
@@ -1065,6 +1096,15 @@
       player.jumpT = 0;
       player.jumpBuffered = 0;
       player.landGrace = 0;
+    }
+
+    if (player.sliding) {
+      player.slideT += dt;
+      if (player.slideT >= SLIDE_DURATION) {
+        player.sliding = false;
+        player.slideT = 0;
+        landDustT = Math.max(landDustT, 0.18);
+      }
     }
 
     if (bombCd > 0) {
@@ -1137,7 +1177,9 @@
       } else if (e.kind === "obstacle") {
         if (isInvulnerable()) {
           smashObstacle(e);
-        } else if (!isJumpClearing()) {
+        } else if (isObstacleClearing(e)) {
+          /* jump or slide under low props */
+        } else {
           gameOver();
           return;
         }
@@ -2251,7 +2293,7 @@
     }
 
     // ground shadow (shrinks in air)
-    const sh = player.jumping ? 0.45 : 1;
+    const sh = player.jumping ? 0.45 : player.sliding ? 0.7 : 1;
     ctx.fillStyle = mode === "space" ? "rgba(180,120,220,0.32)" : "rgba(0,0,0,0.3)";
     ctx.beginPath();
     ctx.ellipse(x, y + 4, 24 * scale * sh, 9 * scale * sh, 0, 0, Math.PI * 2);
@@ -2270,21 +2312,65 @@
     }
 
     const py = y - jumpY;
-    const bob = player.jumping ? 0 : Math.sin(runPhase * 2.6) * 5 * scale;
-    const lean = (player.lane - player.displayLane) * -12 + (player.jumping ? -8 : Math.sin(runPhase) * 4);
-    const legSwing = player.jumping ? 0.55 : Math.sin(runPhase * 2.8);
-    const armSwing = player.jumping ? -0.4 : Math.sin(runPhase * 2.8 + Math.PI);
+    // Steady stride: mild bob; triangle-ish leg drive (clearer steps than soft sin).
+    const stride = Math.sin(runPhase * 2.2);
+    const strideTri = Math.asin(Math.max(-1, Math.min(1, Math.sin(runPhase * 2.2)))) / (Math.PI / 2);
+    const bob = player.jumping || player.sliding ? 0 : stride * 2.2 * scale;
+    const lean =
+      (player.lane - player.displayLane) * -10 +
+      (player.jumping ? -8 : player.sliding ? 18 : stride * 2.5);
+    const legSwing = player.jumping ? 0.55 : player.sliding ? 0 : strideTri;
+    const armSwing = player.jumping ? -0.4 : player.sliding ? 0.2 : -strideTri;
 
     ctx.save();
-    ctx.translate(x, py + bob);
-    ctx.scale(1 / Math.sqrt(stretch), stretch);
+    ctx.translate(x, py + bob + (player.sliding ? 10 * scale : 0));
+    ctx.scale(1 / Math.sqrt(stretch), stretch * (player.sliding ? 0.72 : 1));
     ctx.rotate((lean * Math.PI) / 180);
 
     const body = mode === "space" ? "#d4899a" : mode === "chill" ? "#c9a07a" : "#c47a2c";
     const bodyHi = mode === "space" ? "#e8a0b0" : mode === "chill" ? "#e0c4a0" : "#d4893a";
     const limb = mode === "space" ? "#9a6bb5" : mode === "chill" ? "#7a6a55" : "#5c3a1e";
 
-    // legs with joints
+    // HARD-CUT slide pose (no blend with run cycle)
+    if (player.sliding) {
+      ctx.strokeStyle = limb;
+      ctx.lineWidth = 5 * scale;
+      ctx.lineCap = "round";
+      // tucked legs forward
+      ctx.beginPath();
+      ctx.moveTo(-8 * scale, 4 * scale);
+      ctx.lineTo(18 * scale, 10 * scale);
+      ctx.lineTo(28 * scale, 14 * scale);
+      ctx.moveTo(6 * scale, 6 * scale);
+      ctx.lineTo(22 * scale, 16 * scale);
+      ctx.stroke();
+      ctx.fillStyle = "#2a1810";
+      ctx.beginPath();
+      ctx.ellipse(28 * scale, 14 * scale, 5 * scale, 2.5 * scale, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(22 * scale, 16 * scale, 5 * scale, 2.5 * scale, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // body low / long
+      const bodyG = ctx.createRadialGradient(-4 * scale, -6 * scale, 3, 0, 0, 26 * scale);
+      bodyG.addColorStop(0, bodyHi);
+      bodyG.addColorStop(1, body);
+      ctx.fillStyle = bodyG;
+      ctx.beginPath();
+      ctx.ellipse(2 * scale, -2 * scale, 28 * scale, 16 * scale, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      // head tucked
+      ctx.fillStyle = bodyHi;
+      ctx.beginPath();
+      ctx.ellipse(22 * scale, -14 * scale, 13 * scale, 11 * scale, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#1a1008";
+      ctx.beginPath();
+      ctx.arc(26 * scale, -15 * scale, 2 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // legs with joints (run)
     ctx.strokeStyle = limb;
     ctx.lineWidth = 5.5 * scale;
     ctx.lineCap = "round";
@@ -2701,6 +2787,12 @@
       touchStartT = 0;
       return "jump";
     }
+    if (dy >= SWIPE_AXIS_MIN && Math.abs(dy) > Math.abs(dx) * 0.85) {
+      slide();
+      swipeUsed = true;
+      touchStartT = 0;
+      return "slide";
+    }
     return false;
   }
 
@@ -2790,6 +2882,12 @@
       case "W":
         ev.preventDefault();
         jump();
+        break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        ev.preventDefault();
+        slide();
         break;
       case "b":
       case "B":

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-25（手感追赶：稳步幅 + 滑铲硬切 + XBuilder 清单）
+
+- 文档：[`XBUILDER_FEEL_CATCHUP.md`](XBUILDER_FEEL_CATCHUP.md) — Zurich/Subway Publish 勾选（跑步稳步、滑铲硬切、换道 snap、纵深加宽、无敌/慢慢同步）。**Publish 需 computerUse（桌面忙）。**
+- mobile-web：更稳跑步节拍；换道更脆（`LANE_SNAP` 0.58→0.78，`LANE_LERP` 30→48）；**下滑铲**硬切蹲姿（可钻非 tall 障）；不影响 chill / 无敌。
+
+
 ## 2026-10-25（无敌冲撞 ×3 · 10 秒撞碎）
 
 - 每局 **3 次**无敌：点 🛡️（桌面 `I`/`V`/`Q`）开启 **10 秒**；期间撞障即碎，不死亡。

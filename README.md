@@ -9,7 +9,9 @@
 >
 > 2026-10-25：手机网页版新增 **慢慢跑酷**（积分主看存活时长）。XBuilder 对齐笔记：[`docs/XBUILDER_CHILL_MODE.md`](docs/XBUILDER_CHILL_MODE.md)（仓库无 XBuilder 工程，未能在此 Publish）。
 >
-> 另：mobile-web 已加 **无敌冲撞 ×3**（10 秒撞碎）。见 [](docs/XBUILDER_INVULN.md)。
+> 另：mobile-web 已加 **无敌冲撞 ×3**（10 秒撞碎）。见 [`docs/XBUILDER_INVULN.md`](docs/XBUILDER_INVULN.md)。
+>
+> 手感追赶 Publish 清单（Zurich/Subway）：[`docs/XBUILDER_FEEL_CATCHUP.md`](docs/XBUILDER_FEEL_CATCHUP.md) — **需 computerUse**（桌面忙时等空档）。
 
 ### 手机网页版（微信可部署）
 
