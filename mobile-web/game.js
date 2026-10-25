@@ -91,6 +91,17 @@
   /** Chill score: 10 pts / surviving second + 1 per coin (bonus only). */
   const CHILL_TIME_PTS = 10;
   const CHILL_COIN_BONUS = 1;
+  /** 植物跑酷（致敬 PvZ，原创素材）：草坪 + 僵尸障 + 植物道具。 */
+  const PLANT_SUNFLOWER_DUR = 12;
+  const PLANT_SUN_INTERVAL = 0.85;
+  const PLANT_PEA_DUR = 3.4;
+  const PLANT_PEA_INTERVAL = 0.42;
+  const PLANT_GATLING_DUR = 8;
+  const PLANT_GATLING_INTERVAL = 0.18;
+  const PLANT_WALLNUT_DUR = 5;
+  const PLANT_CHERRY_DUR = 10;
+  const PLANT_PICKUP_BASE = 4.2;
+  const PLANT_BOMB_CD = 12;
   /** Lane visual follow: higher = snappier (was ~14). */
   /** Snap-ish lane (Subway/Zurich): little long-lerp. Refine when free 3-lane measured. */
   const LANE_LERP = 48;
@@ -114,7 +125,7 @@
   const LS_LB = "rb_leaderboard_v1";
   const LB_MAX = 20;
 
-  /** @type {"earth"|"space"|"chill"} */
+  /** @type {"earth"|"space"|"chill"|"plant"} */
   let mode = "earth";
 
   let dpr = 1;
@@ -164,6 +175,51 @@
   let deathFx = false;
   let coinPulseT = 0;
   let landDustT = 0;
+
+  /** Plant-mode timed power-ups (seconds remaining). */
+  let plantSunflowerT = 0;
+  let plantPeaT = 0;
+  let plantGatlingT = 0;
+  let plantWallnutT = 0;
+  let plantCherryT = 0;
+  let plantSunAcc = 0;
+  let plantPeaAcc = 0;
+  let plantGatAcc = 0;
+  let plantPickupAcc = 2.5;
+  /** @type {Array<{lane:number,z:number,life:number,kind:string}>} */
+  let plantShots = [];
+
+  /** Homage art (original cartoons — see assets/CREDITS.md). */
+  const PLANT_ASSET_KEYS = [
+    "sunflower",
+    "peashooter",
+    "gatling",
+    "cherry_bomb",
+    "wallnut",
+    "zombie_basic",
+    "sun_token",
+    "lawn_backdrop_hint",
+  ];
+  /** @type {Record<string, HTMLImageElement>} */
+  const plantImgs = {};
+  let plantAssetsReady = false;
+  (function loadPlantAssets() {
+    let left = PLANT_ASSET_KEYS.length;
+    PLANT_ASSET_KEYS.forEach((key) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        plantImgs[key] = img;
+        left -= 1;
+        if (left <= 0) plantAssetsReady = true;
+      };
+      img.onerror = () => {
+        left -= 1;
+        if (left <= 0) plantAssetsReady = true;
+      };
+      img.src = "assets/" + key + ".png";
+    });
+  })();
 
   /** Drifting star field for 悬空空间 */
   const stars = Array.from({ length: 48 }, (_, i) => ({
@@ -475,13 +531,19 @@
   };
 
   function setMode(next) {
-    if (next !== "earth" && next !== "space" && next !== "chill") return;
+    if (next !== "earth" && next !== "space" && next !== "chill" && next !== "plant") return;
     mode = next;
     appEl.setAttribute("data-theme", mode);
     if (themeMeta) {
       themeMeta.setAttribute(
         "content",
-        mode === "space" ? "#6b4a9e" : mode === "chill" ? "#7a9e8e" : "#1a8cff"
+        mode === "space"
+          ? "#6b4a9e"
+          : mode === "chill"
+            ? "#7a9e8e"
+            : mode === "plant"
+              ? "#5a9e3a"
+              : "#1a8cff"
       );
     }
     if (modePick) {
@@ -497,10 +559,18 @@
 
   function applyHudLabels() {
     const chill = mode === "chill";
+    const plant = mode === "plant";
     if (hudLabelDist) hudLabelDist.textContent = chill ? "时长" : "距离";
     if (hudLabelScore) hudLabelScore.textContent = chill ? "时长积分" : "得分";
-    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : "🏁";
-    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : "⭐";
+    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : plant ? "🌻" : "🏁";
+    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : plant ? "🧟" : "⭐";
+    if (btnBomb) {
+      btnBomb.textContent = plant ? "🍒" : "💣";
+      btnBomb.setAttribute(
+        "aria-label",
+        plant ? "樱桃炸弹：当前道连续清障 10 秒" : "丢炸弹"
+      );
+    }
   }
 
   function resize() {
@@ -579,6 +649,16 @@
     deathFx = false;
     coinPulseT = 0;
     landDustT = 0;
+    plantSunflowerT = 0;
+    plantPeaT = 0;
+    plantGatlingT = 0;
+    plantWallnutT = 0;
+    plantCherryT = 0;
+    plantSunAcc = 0;
+    plantPeaAcc = 0;
+    plantGatAcc = 0;
+    plantPickupAcc = 2.2;
+    plantShots = [];
     overlay.classList.add("hidden");
     overlay.classList.remove("show");
     overEl.classList.add("hidden");
@@ -707,9 +787,14 @@
   /** Slide clears low props; tall still needs jump (or invuln). */
   function isObstacleClearing(e) {
     if (isInvulnerable()) return true;
+    if (mode === "plant" && plantWallnutT > 0) return true;
     if (isJumpClearing()) return true;
     if (player.sliding && !(e && e.tall)) return true;
     return false;
+  }
+
+  function isPlantWallnutShield() {
+    return mode === "plant" && plantWallnutT > 0;
   }
 
   function slide() {
@@ -743,6 +828,16 @@
         ember: "#fcd34d",
         smoke: "rgba(120,140,130,0.4)",
         flash: "rgba(253,230,138,0.55)",
+      };
+    }
+    if (mode === "plant") {
+      return {
+        core: "#ff6b6b",
+        hot: "#e11d48",
+        spark: "#fecdd3",
+        ember: "#fb7185",
+        smoke: "rgba(80,40,40,0.45)",
+        flash: "rgba(255,120,100,0.65)",
       };
     }
     return {
@@ -779,6 +874,23 @@
   function fireBomb() {
     if (!running || dead || deathFx) return;
     if (bombCd > 0) return;
+    // 植物跑酷：樱桃炸弹 = 当前道前方连续清障 10 秒（非一发）。
+    if (mode === "plant") {
+      bombCd = PLANT_BOMB_CD;
+      plantCherryT = PLANT_CHERRY_DUR;
+      const lane = player.lane;
+      if (btnBomb) {
+        btnBomb.disabled = true;
+        btnBomb.classList.add("cooling");
+      }
+      shakeT = Math.max(shakeT, 0.45);
+      flashT = Math.max(flashT, 0.4);
+      boomBurst(lane, 0.78, 1.1);
+      spawnBlast(lane, 0.78, 0.65, 4);
+      spawnFloatText(lane, 0.78, "樱桃炸弹 10s!", "#ff6b6b");
+      clearLaneObstacles(lane, -0.05, 1.05, true);
+      return;
+    }
     bombCd = BOMB_COOLDOWN;
     const lane = player.lane;
     bombs.push({ lane, z: 0.78, life: 0.85, blast: 0.18 });
@@ -794,6 +906,143 @@
     spawnBlast(lane, 0.62, 0.55, 3);
     spawnBlast(lane, 0.45, 0.4, 2);
     clearLaneObstacles(lane, -0.08, 1.08, true);
+  }
+
+  function activatePlantPickup(variant) {
+    if (variant === "sunflower") {
+      plantSunflowerT = PLANT_SUNFLOWER_DUR;
+      plantSunAcc = 0.15;
+      spawnFloatText(player.lane, 0.78, "向日葵!", "#fbbf24");
+    } else if (variant === "peashooter") {
+      plantPeaT = PLANT_PEA_DUR;
+      plantPeaAcc = 0.05;
+      spawnFloatText(player.lane, 0.78, "豌豆!", "#84cc16");
+    } else if (variant === "gatling") {
+      plantGatlingT = PLANT_GATLING_DUR;
+      plantGatAcc = 0.02;
+      spawnFloatText(player.lane, 0.78, "加特林!", "#22c55e");
+    } else if (variant === "wallnut") {
+      plantWallnutT = PLANT_WALLNUT_DUR;
+      spawnFloatText(player.lane, 0.78, "坚果护盾!", "#d97706");
+      burst(player.lane, 0.78, "rgba(217,119,6,0.85)", 12);
+    }
+  }
+
+  function spawnPlantPickup() {
+    if (mode !== "plant") return;
+    const kinds = ["sunflower", "peashooter", "gatling", "wallnut"];
+    const weights = [0.32, 0.28, 0.2, 0.2];
+    let r = Math.random();
+    let variant = kinds[0];
+    for (let i = 0; i < kinds.length; i++) {
+      r -= weights[i];
+      if (r <= 0) {
+        variant = kinds[i];
+        break;
+      }
+    }
+    const lane = Math.floor(Math.random() * LANES);
+    entities.push({
+      lane,
+      z: 0,
+      kind: "plant_pickup",
+      alive: true,
+      variant,
+    });
+  }
+
+  function firePlantShot(kind) {
+    const lane = player.lane;
+    plantShots.push({
+      lane,
+      z: 0.72,
+      life: 0.9,
+      kind: kind || "pea",
+    });
+  }
+
+  function updatePlantPowers(dt, zSpeed) {
+    if (mode !== "plant") return;
+
+    if (plantCherryT > 0) {
+      plantCherryT -= dt;
+      // Continuous clear of current lane ahead (follows lane changes).
+      clearLaneObstacles(player.lane, -0.05, 0.95, false);
+      if (Math.random() < dt * 6) {
+        spawnBlast(player.lane, 0.35 + Math.random() * 0.4, 0.2, 1);
+      }
+      if (plantCherryT <= 0) {
+        plantCherryT = 0;
+        spawnFloatText(player.lane, 0.78, "樱桃结束", "#9ca3af");
+      }
+    }
+
+    if (plantSunflowerT > 0) {
+      plantSunflowerT -= dt;
+      plantSunAcc -= dt;
+      if (plantSunAcc <= 0) {
+        plantSunAcc = PLANT_SUN_INTERVAL;
+        coins += 1;
+        coinPulseT = 0.35;
+        // Visual sun token float + coin credit
+        const { w, h } = viewSize();
+        const p = project(player.lane, 0.7, w, h);
+        floatTexts.push({
+          x: p.x + (Math.random() - 0.5) * 30,
+          y: p.y - 40 * p.scale,
+          vy: -55,
+          life: 0.7,
+          maxLife: 0.7,
+          text: "☀️+1",
+          color: "#fbbf24",
+        });
+        burst(player.lane, 0.7, "rgba(251,191,36,0.8)", 6);
+      }
+      if (plantSunflowerT <= 0) plantSunflowerT = 0;
+    }
+
+    if (plantPeaT > 0) {
+      plantPeaT -= dt;
+      plantPeaAcc -= dt;
+      if (plantPeaAcc <= 0) {
+        plantPeaAcc = PLANT_PEA_INTERVAL;
+        firePlantShot("pea");
+      }
+      if (plantPeaT <= 0) plantPeaT = 0;
+    }
+
+    if (plantGatlingT > 0) {
+      plantGatlingT -= dt;
+      plantGatAcc -= dt;
+      if (plantGatAcc <= 0) {
+        plantGatAcc = PLANT_GATLING_INTERVAL;
+        firePlantShot("gatling");
+      }
+      if (plantGatlingT <= 0) plantGatlingT = 0;
+    }
+
+    if (plantWallnutT > 0) {
+      plantWallnutT -= dt;
+      if (plantWallnutT <= 0) {
+        plantWallnutT = 0;
+        spawnFloatText(player.lane, 0.78, "坚果碎了", "#9ca3af");
+      }
+    }
+
+    for (const s of plantShots) {
+      s.z -= zSpeed * (s.kind === "gatling" ? 3.4 : 2.6) * dt;
+      s.life -= dt;
+      // Follow player's current lane for gatling continuous fire feel
+      if (s.kind === "gatling") s.lane = player.lane;
+      clearLaneObstacles(s.lane, s.z - 0.06, s.z + 0.12, false);
+    }
+    plantShots = plantShots.filter((s) => s.life > 0 && s.z > -0.1);
+
+    plantPickupAcc -= dt;
+    if (plantPickupAcc <= 0) {
+      spawnPlantPickup();
+      plantPickupAcc = PLANT_PICKUP_BASE + Math.random() * 2.2;
+    }
   }
 
   /** Multi-kind explosion particles (fireball / ember / smoke / shard). */
@@ -914,6 +1163,12 @@
       if (r < 0.75) return { variant: "barrier", tall: false };
       return { variant: "sign", tall: false };
     }
+    if (mode === "plant") {
+      // Homage zombies — mostly jumpable; occasional tall.
+      const r = Math.random();
+      if (r < 0.78) return { variant: "zombie", tall: false };
+      return { variant: "zombie_tall", tall: true };
+    }
     const r = Math.random();
     if (r < 0.34) return { variant: "box", tall: false };
     if (r < 0.58) return { variant: "barrier", tall: false };
@@ -1017,10 +1272,17 @@
     const encourage = document.querySelector("#over .over-encourage");
     if (encourage) {
       encourage.textContent =
-        mode === "chill" ? "慢慢来，再多待一会儿 😎" : "勇敢牛牛，再来一次";
+        mode === "chill"
+          ? "慢慢来，再多待一会儿 😎"
+          : mode === "plant"
+            ? "草坪再战一轮 🌻"
+            : "勇敢牛牛，再来一次";
     }
     const badge = document.querySelector("#over .over-badge");
-    if (badge) badge.textContent = mode === "chill" ? "CHILL OVER" : "GAME OVER";
+    if (badge) {
+      badge.textContent =
+        mode === "chill" ? "CHILL OVER" : mode === "plant" ? "ZOMBIES WIN" : "GAME OVER";
+    }
     recordRun(score, sessionPlaySec);
     renderLeaderboards();
     overEl.classList.remove("hidden");
@@ -1082,7 +1344,18 @@
         player.jumpT = 0;
         player.landGrace = JUMP_LAND_GRACE;
         landDustT = 0.28;
-        burst(player.lane, 0.78, mode === "space" ? "rgba(255,200,240,0.7)" : mode === "chill" ? "rgba(200,190,160,0.65)" : "rgba(180,140,90,0.7)", 10);
+        burst(
+          player.lane,
+          0.78,
+          mode === "space"
+            ? "rgba(255,200,240,0.7)"
+            : mode === "chill"
+              ? "rgba(200,190,160,0.65)"
+              : mode === "plant"
+                ? "rgba(120,160,60,0.7)"
+                : "rgba(180,140,90,0.7)",
+          10
+        );
         if (player.jumpBuffered > 0) {
           player.jumping = true;
           player.jumpT = 0;
@@ -1174,8 +1447,12 @@
         e.alive = false;
         coins += 1;
         coinPickupFx(e.lane, e.z);
+      } else if (e.kind === "plant_pickup") {
+        e.alive = false;
+        activatePlantPickup(e.variant || "sunflower");
+        burst(e.lane, e.z, "rgba(132,204,22,0.85)", 10);
       } else if (e.kind === "obstacle") {
-        if (isInvulnerable()) {
+        if (isInvulnerable() || isPlantWallnutShield()) {
           smashObstacle(e);
         } else if (isObstacleClearing(e)) {
           /* jump or slide under low props */
@@ -1203,8 +1480,14 @@
     if (coinAcc <= 0) {
       spawnCoinLine();
       coinAcc =
-        mode === "chill" ? 2.2 + Math.random() * 1.6 : 1.7 + Math.random() * 1.4;
+        mode === "chill"
+          ? 2.2 + Math.random() * 1.6
+          : mode === "plant"
+            ? 2.0 + Math.random() * 1.5
+            : 1.7 + Math.random() * 1.4;
     }
+
+    updatePlantPowers(dt, zSpeed);
 
     updateHud();
   }
@@ -1911,8 +2194,16 @@
       drawCoin(p, mode === "space");
       return;
     }
+    if (e.kind === "plant_pickup") {
+      drawPlantPickup(p, e.variant || "sunflower");
+      return;
+    }
     if (e.kind !== "obstacle") return;
     const v = e.variant || (mode === "space" ? "crystal" : "box");
+    if (mode === "plant") {
+      drawZombieObstacle(p, v === "zombie_tall");
+      return;
+    }
     if (mode === "space") {
       if (v === "crystal_cluster") drawCrystalCluster(p);
       else if (v === "obelisk") drawSpaceObelisk(p);
@@ -1922,6 +2213,262 @@
       else if (v === "sign") drawWarningSign(p);
       else if (v === "train") drawTrain(p);
       else drawCrate(p);
+    }
+  }
+
+  function drawPlantImg(key, p, sizeMul, yLift) {
+    const s = p.scale;
+    const img = plantImgs[key];
+    const size = (sizeMul || 52) * s;
+    const y = p.y - (yLift != null ? yLift : 8) * s;
+    drawGroundShadow(p, size * 0.38, size * 0.12);
+    if (img && img.complete && img.naturalWidth) {
+      ctx.drawImage(img, p.x - size * 0.5, y - size, size, size);
+    } else {
+      // Fallback emoji while loading
+      ctx.font = Math.round(size * 0.85) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      const fallback = {
+        sunflower: "🌻",
+        peashooter: "🟢",
+        gatling: "🔫",
+        wallnut: "🥜",
+        cherry_bomb: "🍒",
+        zombie_basic: "🧟",
+        sun_token: "☀️",
+      };
+      ctx.fillText(fallback[key] || "🌿", p.x, y);
+    }
+  }
+
+  function drawPlantPickup(p, variant) {
+    const bob = Math.sin(animTime * 4 + p.x * 0.03) * 4 * p.scale;
+    const key =
+      variant === "peashooter"
+        ? "peashooter"
+        : variant === "gatling"
+          ? "gatling"
+          : variant === "wallnut"
+            ? "wallnut"
+            : "sunflower";
+    ctx.save();
+    ctx.translate(0, -bob);
+    // soft glow ring
+    const halo = ctx.createRadialGradient(p.x, p.y - 30 * p.scale, 4, p.x, p.y - 30 * p.scale, 36 * p.scale);
+    halo.addColorStop(0, "rgba(190,242,100,0.45)");
+    halo.addColorStop(1, "rgba(190,242,100,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 28 * p.scale, 34 * p.scale, 0, Math.PI * 2);
+    ctx.fill();
+    drawPlantImg(key, p, 48, 6);
+    ctx.restore();
+  }
+
+  function drawZombieObstacle(p, tall) {
+    drawPlantImg("zombie_basic", p, tall ? 64 : 54, tall ? 4 : 6);
+    if (tall) {
+      ctx.fillStyle = "rgba(120,40,40,0.85)";
+      ctx.font = "bold " + Math.round(12 * p.scale) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("!", p.x, p.y - 62 * p.scale);
+    }
+  }
+
+  function drawPlantShots(vw, vh) {
+    for (const s of plantShots) {
+      if (s.z < 0) continue;
+      const p = project(s.lane, Math.max(0, Math.min(1, s.z)), vw, vh);
+      const r = (s.kind === "gatling" ? 6 : 8) * p.scale;
+      const g = ctx.createRadialGradient(p.x, p.y - 18 * p.scale, 0, p.x, p.y - 18 * p.scale, r * 2);
+      g.addColorStop(0, "#ecfccb");
+      g.addColorStop(0.5, "#84cc16");
+      g.addColorStop(1, "#365314");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 18 * p.scale, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 1.5 * p.scale;
+      ctx.stroke();
+    }
+  }
+
+  function drawActivePlantHud(vw, vh) {
+    if (mode !== "plant" || !running) return;
+    const items = [];
+    if (plantSunflowerT > 0) items.push({ key: "sunflower", t: plantSunflowerT, max: PLANT_SUNFLOWER_DUR });
+    if (plantPeaT > 0) items.push({ key: "peashooter", t: plantPeaT, max: PLANT_PEA_DUR });
+    if (plantGatlingT > 0) items.push({ key: "gatling", t: plantGatlingT, max: PLANT_GATLING_DUR });
+    if (plantWallnutT > 0) items.push({ key: "wallnut", t: plantWallnutT, max: PLANT_WALLNUT_DUR });
+    if (plantCherryT > 0) items.push({ key: "cherry_bomb", t: plantCherryT, max: PLANT_CHERRY_DUR });
+    if (!items.length) return;
+    const baseX = 12;
+    let y = vh * 0.18;
+    for (const it of items) {
+      const img = plantImgs[it.key];
+      const box = 36;
+      ctx.fillStyle = "rgba(20,40,10,0.45)";
+      ctx.beginPath();
+      ctx.roundRect
+        ? ctx.roundRect(baseX, y, box + 44, box + 6, 8)
+        : ctx.rect(baseX, y, box + 44, box + 6);
+      ctx.fill();
+      if (img && img.complete) ctx.drawImage(img, baseX + 3, y + 3, box, box);
+      ctx.fillStyle = "#fef9c3";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(Math.ceil(it.t) + "s", baseX + box + 8, y + box * 0.5 + 3);
+      // thin timer bar
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.fillRect(baseX + 3, y + box + 1, box + 38, 3);
+      ctx.fillStyle = "#a3e635";
+      ctx.fillRect(baseX + 3, y + box + 1, (box + 38) * Math.max(0, it.t / it.max), 3);
+      y += box + 14;
+    }
+  }
+
+  function drawSkyPlant(vw, vh) {
+    const g = ctx.createLinearGradient(0, 0, 0, vh * 0.55);
+    g.addColorStop(0, "#7dd3fc");
+    g.addColorStop(0.4, "#bae6fd");
+    g.addColorStop(0.75, "#fef08a");
+    g.addColorStop(1, "#86efac");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, vw, vh);
+
+    // big sun
+    const sx = vw * 0.78;
+    const sy = vh * 0.1;
+    const sr = vw * 0.1;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 3);
+    halo.addColorStop(0, "rgba(254,240,138,0.7)");
+    halo.addColorStop(1, "rgba(254,240,138,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // far fence hint / lawn hills
+    ctx.fillStyle = "#4ade80";
+    ctx.beginPath();
+    ctx.moveTo(0, vh * 0.38);
+    for (let i = 0; i <= 10; i++) {
+      const x = (i / 10) * vw;
+      const y = vh * (0.34 + 0.05 * Math.sin(i * 0.9 + roadScroll * 0.001));
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(vw, vh * 0.5);
+    ctx.lineTo(0, vh * 0.5);
+    ctx.fill();
+
+    // picket fence silhouette
+    ctx.strokeStyle = "rgba(120,80,40,0.45)";
+    ctx.lineWidth = 2;
+    const fenceY = vh * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(0, fenceY);
+    ctx.lineTo(vw, fenceY);
+    ctx.stroke();
+    for (let i = 0; i < 14; i++) {
+      const x = ((i / 14) * vw + (roadScroll * 0.03) % (vw / 14));
+      ctx.fillStyle = "rgba(180,140,90,0.55)";
+      ctx.fillRect(x, fenceY - 18, 4, 18);
+    }
+  }
+
+  function drawRoadPlant(vw, vh) {
+    const far = roadEdges(0, vw, vh);
+    const near = roadEdges(1, vw, vh);
+
+    // lush lawn shoulders
+    const grass = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
+    grass.addColorStop(0, "#86efac");
+    grass.addColorStop(0.5, "#4ade80");
+    grass.addColorStop(1, "#22c55e");
+    ctx.fillStyle = grass;
+    ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+
+    // checkerboard lawn path (PvZ-ish strips)
+    ctx.beginPath();
+    ctx.moveTo(far.left, far.y);
+    ctx.lineTo(far.right, far.y);
+    ctx.lineTo(near.right, near.y);
+    ctx.lineTo(near.left, near.y);
+    ctx.closePath();
+    const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
+    rg.addColorStop(0, "#bbf7d0");
+    rg.addColorStop(0.45, "#86efac");
+    rg.addColorStop(1, "#4ade80");
+    ctx.fillStyle = rg;
+    ctx.fill();
+
+    // light stripe bands
+    for (let i = 0; i < 8; i++) {
+      const z0 = i / 8;
+      const z1 = (i + 1) / 8;
+      if (i % 2 === 0) continue;
+      const e0 = roadEdges(z0, vw, vh);
+      const e1 = roadEdges(z1, vw, vh);
+      ctx.beginPath();
+      ctx.moveTo(e0.left, e0.y);
+      ctx.lineTo(e0.right, e0.y);
+      ctx.lineTo(e1.right, e1.y);
+      ctx.lineTo(e1.left, e1.y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,200,0.12)";
+      ctx.fill();
+    }
+
+    drawTrackGrooves(vw, vh, "rgba(34,100,40,0.28)", 5);
+
+    // lane dashes
+    ctx.strokeStyle = "rgba(255,255,220,0.55)";
+    for (let lane = 0; lane < 2; lane++) {
+      let drawing = false;
+      const dashPeriod = 0.14;
+      const offset = (roadScroll / 240) % dashPeriod;
+      ctx.lineWidth = 2;
+      for (let z = 0; z <= 1; z += 0.02) {
+        const e = roadEdges(z, vw, vh);
+        const x = e.left + (e.right - e.left) * ((lane + 1) / 3);
+        const phase = (z + offset) % dashPeriod;
+        const on = phase < dashPeriod * 0.4;
+        if (on) {
+          if (!drawing) {
+            ctx.beginPath();
+            ctx.moveTo(x, e.y);
+            drawing = true;
+          } else ctx.lineTo(x, e.y);
+        } else if (drawing) {
+          ctx.stroke();
+          drawing = false;
+        }
+      }
+      if (drawing) ctx.stroke();
+    }
+
+    // roadside flowers / small plants
+    for (let i = 0; i < 8; i++) {
+      const z = ((i / 8) + (roadScroll / 620) % 1) % 1;
+      if (z < 0.05 || z > 0.95) continue;
+      const e = roadEdges(z, vw, vh);
+      const sc = 0.35 + z * 0.9;
+      for (const side of [-1, 1]) {
+        const x = side < 0 ? e.left - 16 * sc : e.right + 16 * sc;
+        ctx.fillStyle = "#166534";
+        ctx.fillRect(x - 1.5 * sc, e.y - 10 * sc, 3 * sc, 10 * sc);
+        ctx.fillStyle = i % 2 === 0 ? "#facc15" : "#f472b6";
+        ctx.beginPath();
+        ctx.arc(x, e.y - 12 * sc, 4 * sc, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -2675,7 +3222,9 @@
     ctx.fillStyle =
       mode === "space"
         ? "rgba(255,180,240," + a + ")"
-        : "rgba(255,200,60," + a + ")";
+        : mode === "plant"
+          ? "rgba(255,120,100," + a + ")"
+          : "rgba(255,200,60," + a + ")";
     ctx.fillRect(0, 0, vw, vh);
     // radial burst from cow area
     const cx = vw * 0.5;
@@ -2706,11 +3255,17 @@
         ? "rgba(255,220,245,0.45)"
         : mode === "chill"
           ? "rgba(255,240,220,0.5)"
-          : "rgba(255,255,255,0.35)";
+          : mode === "plant"
+            ? "rgba(220,255,200,0.55)"
+            : "rgba(255,255,255,0.35)";
     ctx.font = "bold 16px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(
-      mode === "chill" ? "慢慢跑酷 · 积分看时长 😎" : "勇敢牛牛，不怕困难",
+      mode === "chill"
+        ? "慢慢跑酷 · 积分看时长 😎"
+        : mode === "plant"
+          ? "植物跑酷 · 捡植物打僵尸 🌻"
+          : "勇敢牛牛，不怕困难",
       vw / 2,
       vh * 0.14
     );
@@ -2730,6 +3285,9 @@
     } else if (mode === "chill") {
       drawSkyChill(vw, vh);
       drawRoadChill(vw, vh);
+    } else if (mode === "plant") {
+      drawSkyPlant(vw, vh);
+      drawRoadPlant(vw, vh);
     } else {
       drawSkyEarth(vw, vh);
       drawRoadEarth(vw, vh);
@@ -2739,7 +3297,9 @@
     for (const e of sorted) drawEntity(e, vw, vh);
     drawBlasts(vw, vh);
     drawBombs(vw, vh);
+    drawPlantShots(vw, vh);
     drawPlayer(vw, vh);
+    drawActivePlantHud(vw, vh);
     drawParticles();
     drawFloatTexts();
     drawBombFlash(vw, vh);
@@ -2944,6 +3504,9 @@
         break;
       case "5":
         if (!running) setMode("chill");
+        break;
+      case "9":
+        if (!running) setMode("plant");
         break;
       default:
         break;

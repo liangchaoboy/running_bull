@@ -7,7 +7,7 @@
 
 > ⚠️ XBuilder 发布页**不适合手机微信**。手机请用下方「手机网页版」。
 >
-> 2026-10-25：手机网页版新增 **慢慢跑酷**（积分主看存活时长）。XBuilder 对齐笔记：[`docs/XBUILDER_CHILL_MODE.md`](docs/XBUILDER_CHILL_MODE.md)（仓库无 XBuilder 工程，未能在此 Publish）。
+> 2026-10-25：手机网页版新增 **慢慢跑酷 / 植物跑酷**（积分主看存活时长）。XBuilder 对齐笔记：[`docs/XBUILDER_CHILL_MODE.md`](docs/XBUILDER_CHILL_MODE.md)（仓库无 XBuilder 工程，未能在此 Publish）。
 >
 > 另：mobile-web 已加 **无敌冲撞 ×3**（10 秒撞碎）。见 [`docs/XBUILDER_INVULN.md`](docs/XBUILDER_INVULN.md)。
 >

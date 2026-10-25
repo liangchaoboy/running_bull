@@ -335,8 +335,9 @@ html, body {
   margin: 0 0 16px;
 }
 
-#mode-pick .mode-card.chill {
-  grid-column: 1 / -1;
+#mode-pick .mode-card.chill,
+#mode-pick .mode-card.plant {
+  /* 2×2 grid with earth/space/chill/plant */
 }
 
 .mode-card {
@@ -905,4 +906,73 @@ html, body {
   font-size: 12px;
   font-weight: 500;
   color: #889;
+}
+
+
+/* --- 植物跑酷 plant theme --- */
+.mode-card.plant.selected {
+  border-color: #65a30d;
+  background: linear-gradient(180deg, #f7fee7, #d9f99d);
+  box-shadow: 0 0 0 3px rgba(101, 163, 13, 0.28);
+}
+
+#app[data-theme="plant"] {
+  --accent: #65a30d;
+}
+
+#app[data-theme="plant"] #overlay,
+#app[data-theme="plant"] #over {
+  background: rgba(30, 50, 20, 0.62);
+}
+
+#app[data-theme="plant"] .card {
+  background: linear-gradient(180deg, #fefce8, #ecfccb);
+  box-shadow: 0 16px 40px rgba(60, 100, 30, 0.28);
+}
+
+#app[data-theme="plant"] .slogan {
+  color: #ca8a04;
+}
+
+#app[data-theme="plant"] .card h1 {
+  color: #3f6212;
+}
+
+#app[data-theme="plant"] .primary {
+  background: linear-gradient(180deg, #a3e635, #65a30d);
+  box-shadow: 0 4px 0 #3f6212;
+}
+
+#app[data-theme="plant"] .primary:active {
+  box-shadow: 0 2px 0 #3f6212;
+}
+
+#app[data-theme="plant"] .touch-btn.jump {
+  background: rgba(132, 204, 22, 0.92);
+  color: #1a2e05;
+}
+
+#app[data-theme="plant"] .touch-btn.bomb {
+  background: rgba(244, 63, 94, 0.92);
+}
+
+#app[data-theme="plant"] .hud-pill {
+  background: rgba(40, 70, 20, 0.55);
+  border-color: rgba(220, 250, 160, 0.3);
+}
+
+#app[data-theme="plant"] .lb-col h3 {
+  color: #4d7c0f;
+}
+
+#app[data-theme="plant"] .result strong {
+  color: #4d7c0f;
+}
+
+#app[data-theme="plant"] .touch-btn.invuln {
+  background: rgba(101, 163, 13, 0.9);
+}
+
+#app[data-theme="plant"] .hud-pill.invuln-pill {
+  border-color: rgba(190, 242, 100, 0.45);
 }
