@@ -44,28 +44,88 @@ html, body {
   right: 0;
   z-index: 5;
   display: flex;
-  justify-content: space-around;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.45), transparent);
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5), transparent);
   pointer-events: none;
 }
 
+.hud-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: rgba(12, 20, 36, 0.55);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+  min-width: 0;
+}
+
+.hud-pill.coin-pill {
+  background: rgba(90, 55, 10, 0.55);
+  border-color: rgba(255, 200, 80, 0.35);
+}
+
+.hud-pill.score-pill {
+  background: rgba(20, 45, 90, 0.55);
+  border-color: rgba(120, 180, 255, 0.35);
+}
+
+#app[data-theme="space"] .hud-pill {
+  background: rgba(40, 20, 70, 0.6);
+  border-color: rgba(230, 180, 255, 0.3);
+}
+
+#app[data-theme="space"] .hud-pill.coin-pill {
+  background: rgba(80, 30, 70, 0.6);
+  border-color: rgba(255, 160, 210, 0.35);
+}
+
+#app[data-theme="space"] .hud-pill.score-pill {
+  background: rgba(50, 30, 100, 0.6);
+  border-color: rgba(180, 140, 255, 0.35);
+}
+
+.hud-ico {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .hud-block {
-  text-align: center;
-  min-width: 72px;
+  text-align: left;
+  min-width: 0;
+  flex: 1;
 }
 
 .hud-label {
   display: block;
-  font-size: 11px;
-  opacity: 0.85;
-  letter-spacing: 0.05em;
+  font-size: 10px;
+  opacity: 0.8;
+  letter-spacing: 0.06em;
 }
 
 .hud-block span:last-child {
-  font-size: 20px;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+  line-height: 1.15;
+}
+
+#hud-coins.pop {
+  animation: coin-pop 0.35s ease-out;
+}
+
+@keyframes coin-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); color: #ffe566; }
+  100% { transform: scale(1); }
 }
 
 #game {
@@ -91,16 +151,17 @@ html, body {
 
 .touch-btn {
   appearance: none;
-  border: none;
-  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 18px;
   height: 64px;
   font-size: 22px;
   font-weight: 700;
   color: #fff;
-  background: rgba(255,255,255,0.22);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+  background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.12));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 5px 0 rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.25);
   cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
 }
 
 .touch-btn:active {
@@ -643,4 +704,80 @@ html, body {
   margin: 8px 0 0;
   font-size: 11px;
   color: #99a;
+}
+
+
+/* --- Production polish: menu / over --- */
+.card {
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.65);
+  background: linear-gradient(180deg, #ffffff, #f3f7fc);
+}
+
+#app[data-theme="space"] .card {
+  background: linear-gradient(180deg, #fff8fc, #efe4ff);
+}
+
+.card h1 {
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 0 rgba(26, 111, 212, 0.12);
+}
+
+.mode-card {
+  box-shadow: 0 4px 0 rgba(0,0,0,0.06);
+}
+
+.mode-card.selected {
+  transform: translateY(-1px);
+}
+
+.over-badge {
+  display: inline-block;
+  margin: 0 0 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.over-encourage {
+  margin: -4px 0 12px;
+  font-size: 13px;
+  color: #e67e22;
+  font-weight: 700;
+}
+
+#app[data-theme="space"] .over-encourage {
+  color: #d46aad;
+}
+
+#over.show-over {
+  animation: over-in 0.35s ease-out;
+}
+
+@keyframes over-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#over.show-over .card {
+  animation: over-card 0.4s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+@keyframes over-card {
+  from { transform: scale(0.88) translateY(16px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.primary {
+  letter-spacing: 0.02em;
+}
+
+#btn-start,
+#btn-retry {
+  position: relative;
+  overflow: hidden;
 }
