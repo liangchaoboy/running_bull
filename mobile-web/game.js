@@ -30,6 +30,9 @@
   const hudLabelInvuln = document.getElementById("hud-label-invuln");
   const hudInvulnPill = document.getElementById("hud-invuln-pill");
   const modePick = document.getElementById("mode-pick");
+  const titleSlogan = document.getElementById("title-slogan");
+  const titleHeading = document.getElementById("title-heading");
+  const modeHint = document.getElementById("mode-hint");
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   const authBar = document.getElementById("auth-bar");
   const btnWechat = document.getElementById("btn-wechat-login");
@@ -552,6 +555,36 @@
         btn.classList.toggle("selected", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
+    }
+    if (titleSlogan) {
+      titleSlogan.textContent =
+        mode === "plant"
+          ? "🌻 植物跑酷 · 致敬版"
+          : mode === "chill"
+            ? "慢慢跑，积分看时长"
+            : mode === "space"
+              ? "星轨平台，水晶障碍"
+              : "勇敢牛牛，不怕困难";
+    }
+    if (titleHeading) {
+      titleHeading.textContent =
+        mode === "plant"
+          ? "植物跑酷"
+          : mode === "chill"
+            ? "慢慢跑酷"
+            : mode === "space"
+              ? "悬空空间"
+              : "天天跑酷";
+    }
+    if (modeHint) {
+      modeHint.textContent =
+        mode === "plant"
+          ? "已选植物跑酷 · 点「开始跑」；🍒=清道10秒"
+          : "选地图 · 点下方卡片（手机无需键盘）";
+    }
+    if (btnStart) {
+      btnStart.textContent =
+        mode === "plant" ? "▶ 开始植物跑酷" : "▶ 开始跑";
     }
     applyHudLabels();
     renderLeaderboards();
