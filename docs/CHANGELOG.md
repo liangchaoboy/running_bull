@@ -1,3 +1,8 @@
+## 2026-10-25 · bgm1（国风轻松循环 BGM + 静音）
+
+- mobile-web：**国风轻松** CC0 循环曲 `assets/bgm/parkour_loop.ogg`（neolein — *A ride through chinese valley*，非 chiptune）；开跑/再来手势启播；右上角 🔊/🔇；`localStorage.rb_bgm_muted`；`?v=bgm1`。
+- XBuilder：已 Publish feel2+bgm1（Stage `跑酷BGM`）；网页同步本提交。
+
 ## 2026-10-25 · boost1（全地图短冲刺加速 ⚡）
 
 - 点按短冲刺：约 **1.0s** `runSpeed×1.45`，结束后 **2.5s CD**；每局限 **3** 次。

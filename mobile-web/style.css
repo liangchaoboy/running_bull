@@ -1573,3 +1573,36 @@ html, body {
   white-space: nowrap;
   letter-spacing: -0.02em;
 }
+
+/* BGM mute — top-right, above title overlay + HUD */
+.mute-btn {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 10px;
+  z-index: 25;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(12, 20, 36, 0.72);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.mute-btn:active {
+  transform: scale(0.94);
+}
+.mute-btn[aria-pressed="true"] {
+  background: rgba(60, 20, 30, 0.78);
+  border-color: rgba(252, 165, 165, 0.45);
+}

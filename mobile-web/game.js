@@ -20,6 +20,7 @@
   const btnStart = document.getElementById("btn-start");
   const btnRetry = document.getElementById("btn-retry");
   const btnChangeMode = document.getElementById("btn-change-mode");
+  const btnMute = document.getElementById("btn-mute");
   const btnLeft = document.getElementById("btn-left");
   const btnRight = document.getElementById("btn-right");
   const btnJump = document.getElementById("btn-jump");
@@ -5465,11 +5466,81 @@
     });
   }
 
+  // --- BGM (CC0 loop) ---
+  const LS_BGM_MUTED = "rb_bgm_muted";
+  const BGM_SRC = "assets/bgm/parkour_loop.ogg";
+  const BGM_VOL = 0.32;
+  let bgmMuted = false;
+  try {
+    bgmMuted = localStorage.getItem(LS_BGM_MUTED) === "1";
+  } catch (e) {}
+  const bgm = new Audio(BGM_SRC);
+  bgm.loop = true;
+  bgm.preload = "auto";
+  bgm.volume = bgmMuted ? 0 : BGM_VOL;
+
+  function syncMuteUi() {
+    if (!btnMute) return;
+    btnMute.textContent = bgmMuted ? "🔇" : "🔊";
+    btnMute.setAttribute("aria-pressed", bgmMuted ? "true" : "false");
+    btnMute.setAttribute("aria-label", bgmMuted ? "取消静音" : "静音");
+    btnMute.title = bgmMuted ? "已静音 · 点按开声" : "背景音乐 · 点按静音";
+  }
+
+  function applyBgmMuteState() {
+    if (bgmMuted) {
+      bgm.volume = 0;
+      try {
+        bgm.pause();
+      } catch (e) {}
+    } else {
+      bgm.volume = BGM_VOL;
+    }
+    syncMuteUi();
+  }
+
+  function ensureBgmPlaying() {
+    if (bgmMuted) {
+      applyBgmMuteState();
+      return;
+    }
+    bgm.volume = BGM_VOL;
+    const playPromise = bgm.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(function () {
+        /* Autoplay blocked until gesture — startOnce / mute unmute will retry */
+      });
+    }
+  }
+
+  function setBgmMuted(next) {
+    bgmMuted = !!next;
+    try {
+      localStorage.setItem(LS_BGM_MUTED, bgmMuted ? "1" : "0");
+    } catch (e) {}
+    applyBgmMuteState();
+    if (!bgmMuted) ensureBgmPlaying();
+  }
+
+  if (btnMute) {
+    btnMute.addEventListener(
+      "click",
+      function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setBgmMuted(!bgmMuted);
+      },
+      false
+    );
+  }
+  applyBgmMuteState();
+
   let lastStartAt = 0;
   function startOnce() {
     const now = performance.now();
     if (now - lastStartAt < 400) return;
     lastStartAt = now;
+    ensureBgmPlaying(); /* gesture unlock + resume after over→retry */
     resetGame();
   }
   bindPress(btnStart, startOnce);
