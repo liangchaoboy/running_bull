@@ -111,3 +111,32 @@ A操作__ B公平__ C前8s__ D死亡__ E擦边__ F爬坡__ G分数__ H分享__
 最痛 1 句：____________________
 下轮只改：____________________
 ```
+
+---
+
+## 7. 记录 · 2026-10-25 Asia/Shanghai（预判 · 当前 Publish）
+
+> **非正式实测**：无浏览器实机连开 3 局；分数来自 `mobile-web/game.js` + CHANGELOG + 同日 Publish 笔记 + `XB_DEMO_BLOCKERS`。标 **预判**。正式分以真人按 §2 重跑为准。  
+> 构建：mobile-web [`966085d`](https://github.com/liangchaoboy/running_bull/commit/966085d) · [?v=adsense1](https://liangchaoboy.github.io/running_bull/mobile-web/?v=adsense1)；XBuilder [同链](https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull)（forest / hero3d / reward 已对齐）。  
+> 汇总全文：[`EVAL_2026-10-25.md`](EVAL_2026-10-25.md)
+
+```
+日期：2026-10-25  试玩人：专家预判（无实机 telemetry）  设备：—  构建：966085d / ?v=adsense1 + XB 同链
+A操作 4  B公平 4  C前8s 3  D死亡 4  E擦边 2  F爬坡 3  G分数 3  H分享 3
+总分 26/40  硬门槛(A,B,D≥4)：过   软门槛(≥28 且 C,E,F≥3)：不过（总分 26；E=2）
+最痛 1 句：设计核心「勇敢擦边倍率」在 mobile-web 未接线（score=距离+金币×10），E 硬挂。
+下轮只改：① web/XB 接通 braveStacks+飘字 ② 结算四字段对齐 GAME_DESIGN ③ 实机 15min 重打本表
+```
+
+| 项 | 分 | 依据（预判） | 实机需确认 |
+|----|----|--------------|------------|
+| A | **4** | `JUMP_BUFFER`/`landGrace`、触控 `passive:false`、`LANE_SNAP≈0.78` | 点按→起跳是否同帧感；微信内丢输入 |
+| B | **4** | `HIT_Z` 0.70–0.82、跳时长/高度放宽、刷障疏化 | 「看着过了却死」比例；tall 障公平 |
+| C | **3** | 开局减速+延后首刷；多模式菜单可能吃掉前几秒 | 8s 内是否过 ≥1 障且想继续 |
+| D | **4** | 撞障→激励假片可读；真 `gameOver` 有崩溃特效+结算+再玩 | 假片跳过是否困惑；结算文案一眼懂 |
+| E | **2** | `computeScore` 无 `braveStacks`；`core/nearMiss` 未进 web；XB 擦边未目视勾 | 3 局内能否擦到并见「勇敢+1」 |
+| F | **3** | 难度下调有分段感；未严格对 LEVEL_1 时间轴验收 | 0–20s 可学、20s+ 加压是否成立 |
+| G | **3** | HUD 距离/币/分可见；缺勇敢/倍率行 | 结算四数是否对齐文案 |
+| H | **3** | 抽奖海报/奖金条有钩子；手感未到「想踢馆」 | 打完是否想截结算发群 |
+
+相对 §4 初版预判（A 硬失败）：手感/碰撞已抬到硬门槛过关；**剩余最大洞仍是 E 擦边**。

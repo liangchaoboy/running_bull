@@ -60,3 +60,17 @@
 结论: 代码/造型就绪；需 Publish 后实机复测
 备注: 见 anime-hero-3d-NOTES.md；根因是 lean/Normal 重现
 ```
+
+```
+日期: 2026-10-25 Asia/Shanghai（预判 · 当前 Publish 对齐）
+构建: XBuilder 同链 Publish（forest rush + hero lock） / mobile-web HEAD `966085d` · `?v=adsense1`（含 forest2/hero3d1/reward1）
+录屏: 无本轮实机叠帧；依据代码 + 同日 forest2 实测 24/30 + hero3d1 Publish 笔记
+1灭点: 4/5  2缩放: 4/5  3速差: 4/5  4冲镜: 4/5  5地面: 4/5  6角色: 5/5
+总分: 25/30
+结论: 过（预判；无单项 ≤2；≥24）
+备注:
+- #1–5 沿用同日优美森林前冲实测（路冻结、树/光斑/虚线冲镜）；live 8–12s 叠帧可复核漂移%。
+- #6 升至 5（预判）：`drawPlayerRear` 锁旋转 + pear hips近头远 + bob≈10 / plant 1.04·0.99；XB 已 Publish 同补丁。实机换道 5s 确认无纸片翻后可定分。
+- 悬空/土路：共用背对精灵 → #6 同预期；景深冲镜弱于森林（无森林树灌资产）→ 预判约 20–22/30，不阻塞森林发布门槛。
+- 程序化 fallback 仍含 lean rotate（PNG 未加载时）；正常加载走 rear 路径。
+```
