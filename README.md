@@ -11,7 +11,7 @@
 >
 > 另：mobile-web 已加 **无敌冲撞 ×3**（10 秒撞碎）。见 [`docs/XBUILDER_INVULN.md`](docs/XBUILDER_INVULN.md)。
 >
-> 手感追赶 Publish 清单（Zurich/Subway）：[`docs/XBUILDER_FEEL_CATCHUP.md`](docs/XBUILDER_FEEL_CATCHUP.md) — **需 computerUse**（桌面忙时等空档）。
+> 2026-10-25 手感 Publish：稳步幅、换道 0.88 贴齐、路更宽（±96 / pinch 0.78）、无敌冲撞 I/V/Q ×3·10s、慢慢跑酷 HUD「时长」。清单：[`docs/XBUILDER_FEEL_CATCHUP.md`](docs/XBUILDER_FEEL_CATCHUP.md)。
 
 ### 手机网页版（微信可部署）
 
