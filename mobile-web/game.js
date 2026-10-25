@@ -2512,7 +2512,7 @@
           ? " <span class=\"score-hint\">（秒×10 + 金币）</span>"
           : " <span class=\"score-hint\">（距离×倍率 + 币×10）</span>");
     }
-    // Unlock props tray after first death this device.
+    // Legacy flag (touch props tray removed in ui1); keep for save compat.
     propsUnlocked = true;
     try { localStorage.setItem(LS_PROPS, "1"); } catch (e) {}
     syncPropsTray();
@@ -5431,30 +5431,14 @@
   if (btnCopyChallenge) bindPress(btnCopyChallenge, copyChallengeCard);
 
 
+  /** ui1: touch props tray removed; keep no-op for call sites. Keyboard B/X/I still work. */
   function syncPropsTray() {
-    const extras = [btnBomb, btnBoost, btnInvuln];
-    const show = propsTrayOpen || propsUnlocked;
-    extras.forEach((el) => {
-      if (!el) return;
-      el.classList.toggle("prop-extra", true);
-      el.classList.toggle("hidden", !show);
-    });
-    if (btnProps) {
-      btnProps.setAttribute("aria-expanded", show && propsTrayOpen ? "true" : "false");
-      btnProps.classList.toggle("open", propsTrayOpen);
-      btnProps.classList.toggle("unlocked", propsUnlocked);
-    }
     const layer = document.getElementById("touch-layer");
-    if (layer) layer.classList.toggle("props-open", show && (propsTrayOpen || propsUnlocked));
+    if (layer) layer.classList.remove("props-open");
   }
 
   function togglePropsTray() {
-    if (!propsUnlocked) {
-      propsTrayOpen = !propsTrayOpen;
-    } else {
-      propsTrayOpen = !propsTrayOpen;
-    }
-    syncPropsTray();
+    /* no-op — #btn-props removed in ui1 */
   }
 
   function syncCoach() {

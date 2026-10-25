@@ -153,7 +153,7 @@ html, body {
   bottom: 0;
   z-index: 6;
   display: grid;
-  grid-template-columns: 0.75fr 0.9fr 0.75fr 0.65fr 0.65fr 0.65fr;
+  grid-template-columns: 1fr 1.15fr 1fr;
   gap: 8px;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
@@ -1517,26 +1517,10 @@ html, body {
 }
 .coach-strip.hidden { display: none; }
 
-#touch-layer {
-  grid-template-columns: 0.85fr 1fr 0.85fr 0.7fr;
-}
-#touch-layer.props-open {
-  grid-template-columns: 0.7fr 0.85fr 0.7fr 0.55fr 0.55fr 0.55fr 0.55fr;
-}
-.touch-btn.props {
-  background: linear-gradient(180deg, rgba(148,163,184,0.55), rgba(71,85,105,0.75));
-  font-size: 15px;
-}
-.touch-btn.props.open {
-  box-shadow: 0 0 0 2px rgba(253,230,138,0.5);
-}
-.touch-btn.prop-extra.hidden { display: none; }
+/* ui1: props tray removed — left / jump / right only */
 #touch-layer.plane-mode .touch-btn.jump.hidden { display: none; }
 #touch-layer.plane-mode {
-  grid-template-columns: 0.9fr 0.9fr 0.7fr;
-}
-#touch-layer.plane-mode.props-open {
-  grid-template-columns: 0.75fr 0.75fr 0.55fr 0.55fr 0.55fr 0.55fr;
+  grid-template-columns: 1fr 1fr;
 }
 
 /* 七牛🐮 promo slot */
@@ -1567,12 +1551,8 @@ html, body {
 #app[data-theme="plane"] .touch-btn.jump {
   display: none !important;
 }
-.touch-btn.boost .boost-count,
-.touch-btn.invuln .invuln-count {
-  font-size: 11px;
-  white-space: nowrap;
-  letter-spacing: -0.02em;
-}
+/* ui1: touch boost/invuln count styles removed with buttons */
+
 
 /* BGM mute — top-right, above title overlay + HUD */
 .mute-btn {

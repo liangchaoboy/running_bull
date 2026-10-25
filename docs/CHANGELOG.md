@@ -1,3 +1,7 @@
+## 2026-10-26 · ui1（去掉道具触控钮）
+
+- 移除底部「道具」展开与 💣/⚡/🛡️ 触控钮；触控栏仅 ◀/跳/▶。键盘 B/X/I 仍可用。`?v=ui1`。详见 [`UI1_NOTES.md`](UI1_NOTES.md)。
+
 ## 2026-10-25 · bgm2（激情澎湃 Bravery Run）
 
 - 换曲：**Bravery Run** by MintoDog（CC0）→ `assets/bgm/parkour_loop.ogg`（~2.02 MB）；弃国风 / 弃轻松 chiptune。
