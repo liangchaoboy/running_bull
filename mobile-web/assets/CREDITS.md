@@ -1,24 +1,44 @@
-# Credits — PVZ Homage Assets
+# Credits — PVZ Homage Assets (HQ)
 
 These sprites are **original fan-homage cartoon artwork** created for the
-endless-runner project **勇敢牛牛** (Brave Ox Ox).
+endless-runner project **勇敢牛牛** (Brave Ox Ox / Running Bull).
 
-They are **not** copies of official Plants vs. Zombies art, sprites, or assets
-owned by PopCap Games / Electronic Arts. Designs are simple geometric cute
-cartoons drawn procedurally with Python (Pillow) for a running-PvZ-inspired
-game mode.
+They are **not** copies of official Plants vs. Zombies art, sprites, audio, or
+other assets owned by PopCap Games / Electronic Arts. Designs are original cute
+cartoon characters drawn procedurally with Python (Pillow): richer gradients,
+soft shadows, and highlights, with silhouettes that intentionally differ from
+official PvZ characters.
 
 **Not affiliated with, endorsed by, or associated with EA or PopCap.**
+No official PopCap/EA Plants vs. Zombies assets were downloaded or used.
 
-Files:
-- sunflower.png — bright yellow sunflower (sun / coin producer)
-- peashooter.png — green pea plant shooter
-- cherry_bomb.png — twin cherries with fuse (timed clear bomb)
-- wallnut.png — brown nut shield
-- zombie_basic.png — original shambling gray-green obstacle silhouette
-- sun_token.png — glowing sun coin pickup
-- lawn_backdrop_hint.png — simple sunny lawn + fence hint
-- gatling.png — green multi-barrel pea plant (homage, original design)
+## Files
 
-License for this folder: free to use within 勇敢牛牛 and its forks as homage
-art; do not claim these are official PvZ assets.
+| File | Size | Role |
+|------|------|------|
+| `sunflower.png` | 512×512 | Sun / coin producer plant |
+| `peashooter.png` | 512×512 | Single-shot pea plant |
+| `gatling.png` | 512×512 | Multi-barrel continuous shooter |
+| `cherry_bomb.png` | 512×512 | Twin-cherry timed clear bomb |
+| `wallnut.png` | 512×512 | Nut shield / defense |
+| `zombie_basic.png` | 512×512 | Shambling obstacle (original design) |
+| `sun_token.png` | 512×512 | Glowing sun coin pickup |
+| `lawn_backdrop.png` | 512×768 | Sunny lawn runner backdrop |
+| `generate_hq.py` | — | Generator script (reproducible) |
+
+## Optional CC0 mix-ins (not bundled here)
+
+If you later want extra foliage for side decoration only, Kenney packs are
+clearly **CC0** (public domain dedication):
+
+- [Kenney Foliage Pack](https://www.kenney.nl/assets/foliage-pack) — CC0
+- [Kenney Foliage Sprites](https://www.kenney.nl/assets/foliage-sprites) — CC0
+
+Credit “Kenney.nl” is appreciated but not required for CC0. This HQ folder
+itself uses **only** the generated original homage art above; Kenney packs were
+**not** downloaded into this directory for this pass.
+
+## License note
+
+Free to use within 勇敢牛牛 and its forks as homage art. Do **not** claim these
+are official Plants vs. Zombies assets.

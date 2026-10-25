@@ -192,7 +192,7 @@
   /** @type {Array<{lane:number,z:number,life:number,kind:string}>} */
   let plantShots = [];
 
-  /** Homage art (original cartoons — see assets/CREDITS.md). */
+  /** HQ homage art (original cartoons — see assets/CREDITS.md). */
   const PLANT_ASSET_KEYS = [
     "sunflower",
     "peashooter",
@@ -201,7 +201,7 @@
     "wallnut",
     "zombie_basic",
     "sun_token",
-    "lawn_backdrop_hint",
+    "lawn_backdrop",
   ];
   /** @type {Record<string, HTMLImageElement>} */
   const plantImgs = {};
@@ -2364,6 +2364,26 @@
   }
 
   function drawSkyPlant(vw, vh) {
+    const bg = plantImgs.lawn_backdrop;
+    if (bg && bg.complete && bg.naturalWidth) {
+      // Cover-style draw of HQ lawn backdrop (original homage art)
+      const iw = bg.naturalWidth;
+      const ih = bg.naturalHeight;
+      const scale = Math.max(vw / iw, vh / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (vw - dw) * 0.5;
+      const dy = (vh - dh) * 0.15; // bias slightly upward so lawn sits near horizon
+      ctx.drawImage(bg, dx, dy, dw, dh);
+      // soft lower fade into road greens
+      const fade = ctx.createLinearGradient(0, vh * 0.28, 0, vh * 0.55);
+      fade.addColorStop(0, "rgba(134,239,172,0)");
+      fade.addColorStop(1, "rgba(74,222,128,0.55)");
+      ctx.fillStyle = fade;
+      ctx.fillRect(0, vh * 0.28, vw, vh * 0.3);
+      return;
+    }
+
     const g = ctx.createLinearGradient(0, 0, 0, vh * 0.55);
     g.addColorStop(0, "#7dd3fc");
     g.addColorStop(0.4, "#bae6fd");
