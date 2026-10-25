@@ -53,6 +53,12 @@
   const lbMineEl = document.getElementById("lb-mine");
   const overLbEl = document.getElementById("over-lb");
   const overPlaytimeEl = document.getElementById("over-playtime");
+  const rewardedAdEl = document.getElementById("rewarded-ad");
+  const rewardedAdCountdown = document.getElementById("rewarded-ad-countdown");
+  const rewardedAdHint = document.getElementById("rewarded-ad-hint");
+  const rewardedAdCompleteBtn = document.getElementById("rewarded-ad-complete");
+  const rewardedAdSkipBtn = document.getElementById("rewarded-ad-skip");
+  const rewardToastEl = document.getElementById("reward-toast");
 
   const W = 420;
   const H = 740;
@@ -66,6 +72,15 @@
   const ROAD_SCALE = 1.18;
   const INVULN_CHARGES = 3;
   const INVULN_DURATION = 10;
+  /** 撞障激励广告：观看冻结；看完后短暂无敌 + 短道具。 */
+  const REWARD_AD_DURATION = 2.0;
+  const REWARD_AD_INVULN = 1.8;
+  const REWARD_AD_SHIELD = 3.0;
+  /** 优美森林 / 土路：灭点与路心横向弯道（相对 vw）。 */
+  const CURVE_K_FOREST = 0.038;
+  const CURVE_AMP_FOREST = 0.06;
+  const CURVE_K_EARTH = 0.032;
+  const CURVE_AMP_EARTH = 0.045;
   const BOMB_COOLDOWN = 1.6;
   /** Longer than hit-zone dwell at start speed so a well-timed jump clears. */
   const JUMP_DURATION = 0.82;
@@ -168,9 +183,21 @@
     let T = 0;
     if (tMin >= 2) T = Math.min(1 + 0.5 * (tMin - 2), 5);
     const C = Math.min(Math.floor(g / 100), 5);
-    let W = Math.min(T + C, L.ticketSoftCap);
+    let quizBonus = 0;
+    try {
+      quizBonus = Math.max(0, Number(loadLotteryState().quizBonus) || 0);
+    } catch (err) {}
+    let W = Math.min(T + C + quizBonus, L.ticketSoftCap);
     if (W < 1) W = 1; // base 1 after qualify
-    return { qualifies: true, T: Math.round(T * 100) / 100, C: C, W: W, tMin: Math.round(tMin * 100) / 100, g: g };
+    return {
+      qualifies: true,
+      T: Math.round(T * 100) / 100,
+      C: C,
+      quizBonus: quizBonus,
+      W: W,
+      tMin: Math.round(tMin * 100) / 100,
+      g: g,
+    };
   }
 
   function lotteryDayKey() {
@@ -184,12 +211,20 @@
   function loadLotteryState() {
     try {
       const raw = localStorage.getItem(LS_LOTTERY);
-      if (!raw) return { day: lotteryDayKey(), drawn: false, lastRun: null };
+      if (!raw) return { day: lotteryDayKey(), drawn: false, lastRun: null, quizBonus: 0 };
       const o = JSON.parse(raw);
-      if (!o || o.day !== lotteryDayKey()) return { day: lotteryDayKey(), drawn: false, lastRun: o && o.lastRun ? o.lastRun : null };
+      if (!o || o.day !== lotteryDayKey()) {
+        return {
+          day: lotteryDayKey(),
+          drawn: false,
+          lastRun: o && o.lastRun ? o.lastRun : null,
+          quizBonus: 0,
+        };
+      }
+      if (o.quizBonus == null) o.quizBonus = 0;
       return o;
     } catch (e) {
-      return { day: lotteryDayKey(), drawn: false, lastRun: null };
+      return { day: lotteryDayKey(), drawn: false, lastRun: null, quizBonus: 0 };
     }
   }
 
@@ -270,6 +305,14 @@
   let flashT = 0;
   let deathT = 0;
   let deathFx = false;
+  /** null | "watching" — 非空时冻结滚屏与操作。 */
+  let rewardAdPhase = null;
+  /** 观看倒计时剩余秒。 */
+  let rewardAdT = 0;
+  /** 当前挡路障碍（看完才移除；跳过则保留）。 */
+  let pendingHitObstacle = null;
+  let rewardToastT = 0;
+  let rewardAdToken = 0;
   let coinPulseT = 0;
   let landDustT = 0;
 
@@ -908,6 +951,26 @@
     return { w: rect.width || W, h: rect.height || H };
   }
 
+  /** Gentle S-curve for forest (stronger) and earth. Space/chill/plant stay straight. */
+  function curveDx(z, vw) {
+    let k = 0;
+    let ampFrac = 0;
+    if (mode === "forest") {
+      k = CURVE_K_FOREST;
+      ampFrac = CURVE_AMP_FOREST;
+    } else if (mode === "earth") {
+      k = CURVE_K_EARTH;
+      ampFrac = CURVE_AMP_EARTH;
+    } else {
+      return 0;
+    }
+    const zz = Math.max(0, Math.min(1, z));
+    // Far lags slightly so the path reads as continuous bends, not a rigid shift.
+    const phase = distance * k - (1 - zz) * 0.85;
+    const depth = 0.4 + 0.6 * zz;
+    return Math.sin(phase) * vw * ampFrac * depth;
+  }
+
   /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom).
    *  Tuned toward Subway Surfers: lower vanishing point, much wider near road. */
   function project(lane, z, vw, vh) {
@@ -917,7 +980,7 @@
     const roadHalfFar = vw * ROAD_HALF_FAR;
     const roadHalfNear = vw * ROAD_HALF_NEAR;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
-    const cx = vw * 0.5;
+    const cx = vw * 0.5 + curveDx(z, vw);
     const lx = LANE_X[lane];
     const offset = (lx - 0.5) * 2;
     const x = cx + offset * half;
@@ -932,7 +995,7 @@
     const roadHalfFar = vw * ROAD_HALF_FAR;
     const roadHalfNear = vw * ROAD_HALF_NEAR;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
-    const cx = vw * 0.5;
+    const cx = vw * 0.5 + curveDx(z, vw);
     return { y, left: cx - half, right: cx + half, half, cx };
   }
 
@@ -969,6 +1032,13 @@
     flashT = 0;
     deathT = 0;
     deathFx = false;
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    pendingHitObstacle = null;
+    rewardToastT = 0;
+    rewardAdToken += 1;
+    hideRewardedAd();
+    hideRewardToast();
     coinPulseT = 0;
     landDustT = 0;
     plantSunflowerT = 0;
@@ -997,6 +1067,12 @@
     running = false;
     dead = false;
     deathFx = false;
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    pendingHitObstacle = null;
+    rewardAdToken += 1;
+    hideRewardedAd();
+    hideRewardToast();
     overEl.classList.add("hidden");
     overEl.classList.remove("show-over");
     overlay.classList.remove("hidden");
@@ -1013,6 +1089,10 @@
     hudCoins.textContent = String(coins);
     hudScore.textContent = String(score);
     syncInvulnUi();
+  }
+
+  function isRewardedAdOpen() {
+    return rewardAdPhase != null;
   }
 
   function isInvulnerable() {
@@ -1041,7 +1121,7 @@
     if (btnInvuln) {
       btnInvuln.classList.toggle("active", active);
       btnInvuln.classList.toggle("empty", !active && left <= 0);
-      btnInvuln.disabled = active || left <= 0 || !running || dead || deathFx;
+      btnInvuln.disabled = active || left <= 0 || !running || dead || deathFx || isRewardedAdOpen();
       btnInvuln.setAttribute(
         "aria-label",
         active
@@ -1052,7 +1132,7 @@
   }
 
   function activateInvuln() {
-    if (!running || dead || deathFx) return;
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
     if (isInvulnerable()) return;
     if (invulnCharges <= 0) return;
     invulnCharges -= 1;
@@ -1076,7 +1156,7 @@
   }
 
   function changeLane(dir) {
-    if (!running || dead || deathFx) return;
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
     const next = Math.max(0, Math.min(LANES - 1, player.lane + dir));
     if (next === player.lane) return;
     player.lane = next;
@@ -1085,7 +1165,7 @@
   }
 
   function jump() {
-    if (!running || dead || deathFx) return;
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
     if (player.jumping) {
       // Queue a follow-up if pressed near landing.
       if (player.jumpT >= JUMP_DURATION - JUMP_BUFFER) {
@@ -1120,7 +1200,7 @@
   }
 
   function slide() {
-    if (!running || dead || deathFx) return;
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
     if (player.sliding) return;
     // Hard-cut: cancel jump pose instantly (no blend).
     player.jumping = false;
@@ -1194,7 +1274,7 @@
   }
 
   function fireBomb() {
-    if (!running || dead || deathFx) return;
+    if (!running || dead || deathFx || isRewardedAdOpen()) return;
     if (bombCd > 0) return;
     // 植物跑酷：樱桃炸弹 = 当前道前方连续清障 10 秒（非一发）。
     if (mode === "plant") {
@@ -1536,6 +1616,164 @@
     }
   }
 
+  function hideRewardedAd() {
+    if (rewardedAdEl) {
+      rewardedAdEl.classList.add("hidden");
+      rewardedAdEl.classList.remove("show-ad");
+    }
+    if (rewardedAdCompleteBtn) {
+      rewardedAdCompleteBtn.disabled = true;
+    }
+    if (rewardedAdCountdown) rewardedAdCountdown.textContent = "2.0s";
+    if (rewardedAdHint) {
+      rewardedAdHint.textContent = "看完即可越过障碍并继续跑";
+    }
+  }
+
+  function hideRewardToast() {
+    if (rewardToastEl) {
+      rewardToastEl.classList.add("hidden");
+      rewardToastEl.classList.remove("show");
+      rewardToastEl.textContent = "";
+    }
+    rewardToastT = 0;
+  }
+
+  function showRewardToast(msg) {
+    if (!rewardToastEl) {
+      spawnFloatText(player.lane, 0.78, msg, "#fde68a");
+      return;
+    }
+    rewardToastEl.textContent = msg;
+    rewardToastEl.classList.remove("hidden");
+    rewardToastEl.classList.add("show");
+    rewardToastT = 2.2;
+  }
+
+  function syncRewardedAdUi() {
+    const left = Math.max(0, rewardAdT);
+    if (rewardedAdCountdown) {
+      rewardedAdCountdown.textContent = left.toFixed(1) + "s";
+    }
+    if (rewardedAdCompleteBtn) {
+      rewardedAdCompleteBtn.disabled = left > 0.02;
+    }
+  }
+
+  /**
+   * Mock rewarded ad for GitHub Pages.
+   * Replace body when integrating 微信小游戏流量主 / TapTap Dirichlet:
+   *   call platform rewarded API, then onCompleted() / onSkipped().
+   */
+  function mockRewardedAdShow(opts) {
+    const onCompleted = opts && opts.onCompleted;
+    const onSkipped = opts && opts.onSkipped;
+    const token = ++rewardAdToken;
+    rewardAdPhase = "watching";
+    rewardAdT = REWARD_AD_DURATION;
+    if (rewardedAdEl) {
+      rewardedAdEl.classList.remove("hidden");
+      rewardedAdEl.classList.add("show-ad");
+    }
+    if (rewardedAdCompleteBtn) rewardedAdCompleteBtn._autoArmed = false;
+    if (rewardedAdHint) {
+      rewardedAdHint.textContent = "看完即可越过障碍并继续跑";
+    }
+    syncRewardedAdUi();
+
+    function complete() {
+      if (token !== rewardAdToken || rewardAdPhase !== "watching") return;
+      if (typeof onCompleted === "function") onCompleted();
+    }
+    function skip() {
+      if (token !== rewardAdToken || rewardAdPhase !== "watching") return;
+      if (typeof onSkipped === "function") onSkipped();
+    }
+
+    if (rewardedAdCompleteBtn) {
+      rewardedAdCompleteBtn.onclick = function (ev) {
+        ev.preventDefault();
+        if (rewardAdT > 0.02) return;
+        complete();
+      };
+    }
+    if (rewardedAdSkipBtn) {
+      rewardedAdSkipBtn.onclick = function (ev) {
+        ev.preventDefault();
+        skip();
+      };
+    }
+  }
+
+  /** Public hook — host can overwrite with real SDK. */
+  window.__RB_REWARDED_AD = {
+    show: function (opts) {
+      mockRewardedAdShow(opts || {});
+    },
+  };
+
+  function grantRewardAdProp() {
+    // Alternate-ish: shield 3s or one-lane clear ahead.
+    const useShield = Math.random() < 0.55;
+    if (useShield) {
+      invulnT = Math.max(invulnT, REWARD_AD_SHIELD);
+      showRewardToast("护盾 ×3s");
+      spawnFloatText(player.lane, 0.78, "护盾!", "#93c5fd");
+    } else {
+      const n = clearLaneObstacles(player.lane, 0.05, 1.05, false);
+      showRewardToast(n > 0 ? "清道 ×" + n : "清道（本道已空）");
+      spawnFloatText(player.lane, 0.78, "清道!", "#86efac");
+      burst(player.lane, 0.72, "rgba(134,239,172,0.75)", 10);
+    }
+    syncInvulnUi();
+  }
+
+  function finishRewardedAdSuccess() {
+    if (rewardAdPhase !== "watching") return;
+    if (pendingHitObstacle) {
+      pendingHitObstacle.alive = false;
+      pendingHitObstacle = null;
+    }
+    hideRewardedAd();
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    invulnT = Math.max(invulnT, REWARD_AD_INVULN);
+    grantRewardAdProp();
+    spawnFloatText(player.lane, 0.78, "继续跑", "#c4b5fd");
+    syncInvulnUi();
+  }
+
+  function onRewardedAdSkipped() {
+    // Stay paused; obstacle remains. Soft nudge only.
+    if (rewardedAdHint) {
+      rewardedAdHint.textContent = "需看完广告才能通过障碍";
+    }
+    showRewardToast("需看完才能通过");
+    // Keep rewardAdPhase = "watching"; do not clear pendingHitObstacle.
+  }
+
+  /** Soft hit: no Game Over — rewarded ad mock; complete → pass + prop. */
+  function triggerRewardedAd(e) {
+    if (isRewardedAdOpen() || deathFx || dead) return;
+    pendingHitObstacle = e || null;
+    shakeT = Math.max(shakeT, 0.32);
+    flashT = Math.max(flashT, 0.22);
+    burst(player.lane, 0.78, "rgba(56,189,248,0.55)", 12);
+    const api = window.__RB_REWARDED_AD;
+    if (api && typeof api.show === "function") {
+      api.show({
+        onCompleted: finishRewardedAdSuccess,
+        onSkipped: onRewardedAdSkipped,
+      });
+    } else {
+      mockRewardedAdShow({
+        onCompleted: finishRewardedAdSuccess,
+        onSkipped: onRewardedAdSkipped,
+      });
+    }
+    syncInvulnUi();
+  }
+
   function gameOver() {
     if (deathFx || dead) return;
     deathFx = true;
@@ -1649,6 +1887,44 @@
       }
       return;
     }
+    if (isRewardedAdOpen()) {
+      if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
+      if (flashT > 0) flashT = Math.max(0, flashT - dt);
+      if (rewardToastT > 0) {
+        rewardToastT -= dt;
+        if (rewardToastT <= 0) hideRewardToast();
+      }
+      for (const p of particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += (p.kind === "smoke" ? 40 : 220) * dt;
+        p.vx *= 1 - 1.2 * dt;
+        if (p.rot != null) p.rot += (p.vr || 0) * dt;
+        p.life -= dt;
+      }
+      particles = particles.filter((p) => p.life > 0);
+      for (const ft of floatTexts) {
+        ft.y += ft.vy * dt;
+        ft.life -= dt;
+      }
+      floatTexts = floatTexts.filter((ft) => ft.life > 0);
+      if (rewardAdPhase === "watching" && rewardAdT > 0) {
+        rewardAdT = Math.max(0, rewardAdT - dt);
+        syncRewardedAdUi();
+        // Auto-enable; optional auto-complete after countdown hits 0.
+        if (rewardAdT <= 0 && rewardedAdCompleteBtn && !rewardedAdCompleteBtn._autoArmed) {
+          rewardedAdCompleteBtn._autoArmed = true;
+          // leave click to user or fire shortly
+          setTimeout(function () {
+            if (rewardAdPhase === "watching" && rewardAdT <= 0) {
+              if (rewardedAdCompleteBtn) rewardedAdCompleteBtn._autoArmed = false;
+              finishRewardedAdSuccess();
+            }
+          }, 180);
+        }
+      }
+      return;
+    }
     if (!running) return;
 
     if (mode === "chill") {
@@ -1735,6 +2011,10 @@
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
     if (coinPulseT > 0) coinPulseT = Math.max(0, coinPulseT - dt);
     if (landDustT > 0) landDustT = Math.max(0, landDustT - dt);
+    if (rewardToastT > 0) {
+      rewardToastT -= dt;
+      if (rewardToastT <= 0) hideRewardToast();
+    }
 
     for (const e of entities) {
       if (!e.alive) continue;
@@ -1788,7 +2068,7 @@
         } else if (isObstacleClearing(e)) {
           /* jump or slide under low props */
         } else {
-          gameOver();
+          triggerRewardedAd(e);
           return;
         }
       }
@@ -2026,12 +2306,17 @@
     ctx.fillStyle = grass;
     ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
 
-    // dirt road body
+    // dirt road body — multi-seg for gentle curveDx bend
     ctx.beginPath();
-    ctx.moveTo(far.left, far.y);
-    ctx.lineTo(far.right, far.y);
-    ctx.lineTo(near.right, near.y);
-    ctx.lineTo(near.left, near.y);
+    for (let z = 0; z <= 1.001; z += 0.05) {
+      const e = roadEdges(Math.min(1, z), vw, vh);
+      if (z === 0) ctx.moveTo(e.left, e.y);
+      else ctx.lineTo(e.left, e.y);
+    }
+    for (let z = 1; z >= -0.001; z -= 0.05) {
+      const e = roadEdges(Math.max(0, z), vw, vh);
+      ctx.lineTo(e.right, e.y);
+    }
     ctx.closePath();
     const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
     rg.addColorStop(0, "#a08060");
@@ -3285,12 +3570,17 @@
     ctx.fillStyle = grass;
     ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
 
-    // sunlit green path (transparent center for lanes — no opaque mid trees)
+    // sunlit green path — multi-seg so gentle curveDx reads as a bend
     ctx.beginPath();
-    ctx.moveTo(far.left, far.y);
-    ctx.lineTo(far.right, far.y);
-    ctx.lineTo(near.right, near.y);
-    ctx.lineTo(near.left, near.y);
+    for (let z = 0; z <= 1.001; z += 0.05) {
+      const e = roadEdges(Math.min(1, z), vw, vh);
+      if (z === 0) ctx.moveTo(e.left, e.y);
+      else ctx.lineTo(e.left, e.y);
+    }
+    for (let z = 1; z >= -0.001; z -= 0.05) {
+      const e = roadEdges(Math.max(0, z), vw, vh);
+      ctx.lineTo(e.right, e.y);
+    }
     ctx.closePath();
     const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
     rg.addColorStop(0, "#9fd86a");

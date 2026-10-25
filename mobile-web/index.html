@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a8cff" />
   <meta name="description" content="勇敢牛牛，不怕困难 —— 竖屏三道跑酷，微信可开" />
   <title>勇敢牛牛 · 手机跑酷</title>
-  <link rel="stylesheet" href="style.css?v=forest2" />
+  <link rel="stylesheet" href="style.css?v=reward1" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -125,6 +125,7 @@
           <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
           <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
           <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍</li>
+          <li>📺 撞障看激励广告（示意 2 秒）后继续；看完送短护盾/清道</li>
         </ul>
 
         <div class="lb-panel" aria-label="排行榜">
@@ -142,6 +143,21 @@
         <button type="button" id="btn-start" class="primary">▶ 开始跑</button>
       </div>
     </div>
+
+    <div id="rewarded-ad" class="hidden" aria-live="polite" role="dialog" aria-modal="true" aria-labelledby="rewarded-ad-label">
+      <div class="rewarded-ad-card">
+        <p class="rewarded-ad-label" id="rewarded-ad-label">激励视频（示意）</p>
+        <p class="rewarded-ad-title">观看广告</p>
+        <p class="rewarded-ad-countdown" id="rewarded-ad-countdown">2.0s</p>
+        <p class="rewarded-ad-hint" id="rewarded-ad-hint">看完即可越过障碍并继续跑</p>
+        <div class="rewarded-ad-actions">
+          <button type="button" id="rewarded-ad-complete" class="primary" disabled>看完</button>
+          <button type="button" id="rewarded-ad-skip" class="ghost">跳过</button>
+        </div>
+        <p class="rewarded-ad-foot">GitHub Pages 占位 · 接入微信小游戏 / TapTap 时替换</p>
+      </div>
+    </div>
+    <div id="reward-toast" class="reward-toast hidden" aria-live="polite"></div>
 
     <div id="over" class="hidden" aria-live="assertive">
       <div class="card">
@@ -178,6 +194,6 @@
       </div>
     </div>
   </div>
-  <script src="game.js?v=forest2"></script>
+  <script src="game.js?v=reward1"></script>
 </body>
 </html>

@@ -1123,3 +1123,144 @@ html, body {
 #mode-pick {
   grid-template-columns: 1fr 1fr;
 }
+
+
+/* --- 激励广告占位（撞障软停） --- */
+#rewarded-ad {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  pointer-events: auto;
+  background: rgba(8, 10, 22, 0.55);
+  backdrop-filter: blur(4px);
+}
+#rewarded-ad.hidden {
+  display: none;
+}
+#rewarded-ad.show-ad {
+  animation: reward-ad-in 0.28s ease-out;
+}
+@keyframes reward-ad-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.rewarded-ad-card {
+  width: min(86vw, 320px);
+  padding: 22px 20px 18px;
+  border-radius: 16px;
+  text-align: center;
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 60%, #111827 100%);
+  color: #e2e8f0;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  animation: reward-ad-card 0.35s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+@keyframes reward-ad-card {
+  from { transform: scale(0.92) translateY(10px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.rewarded-ad-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.rewarded-ad-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.rewarded-ad-countdown {
+  margin: 0 0 8px;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+}
+.rewarded-ad-hint {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+.rewarded-ad-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rewarded-ad-actions .primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.rewarded-ad-actions .ghost {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.rewarded-ad-foot {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #64748b;
+}
+#app[data-theme="forest"] .rewarded-ad-card {
+  background: linear-gradient(165deg, #1a2e1f, #0f1c14 60%, #122018);
+}
+#app[data-theme="forest"] .rewarded-ad-countdown {
+  color: #86efac;
+}
+#app[data-theme="space"] .rewarded-ad-card {
+  background: linear-gradient(165deg, #2a1a3a, #1a1028 60%, #140e22);
+}
+#app[data-theme="space"] .rewarded-ad-countdown {
+  color: #e9d5ff;
+}
+#app[data-theme="chill"] .rewarded-ad-card {
+  background: linear-gradient(165deg, #243028, #1a2420);
+}
+
+.reward-toast {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 14;
+  max-width: min(88vw, 300px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fef3c7;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.reward-toast.hidden {
+  display: none;
+}
+.reward-toast.show {
+  animation: reward-toast-in 0.25s ease-out;
+}
+@keyframes reward-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
