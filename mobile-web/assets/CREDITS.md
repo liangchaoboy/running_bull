@@ -42,3 +42,7 @@ itself uses **only** the generated original homage art above; Kenney packs were
 
 Free to use within 勇敢牛牛 and its forks as homage art. Do **not** claim these
 are official Plants vs. Zombies assets.
+
+
+## Forest + rear-run
+See `forest/CREDITS.md` (Quaternius/Kenney CC0; no Glimmerwood).

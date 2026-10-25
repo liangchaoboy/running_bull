@@ -1072,3 +1072,54 @@ html, body {
 #app[data-theme="plant"] .hud-pill.invuln-pill {
   border-color: rgba(190, 242, 100, 0.45);
 }
+
+
+/* --- hero pick (bull/deer/dog) --- */
+#hero-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.hero-card {
+  appearance: none;
+  border: 2px solid #d8e0ea;
+  border-radius: 12px;
+  padding: 8px 6px;
+  background: #f6f9fc;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  touch-action: manipulation;
+}
+.hero-card.selected {
+  border-color: #1a6fd4;
+  background: #e8f3ff;
+  box-shadow: 0 0 0 3px rgba(26, 111, 212, 0.18);
+}
+.hero-emoji { font-size: 22px; line-height: 1; }
+.hero-name { font-size: 12px; font-weight: 600; color: #334; }
+
+/* --- forest theme --- */
+.mode-card.forest.selected {
+  border-color: #3d9e5b;
+  background: linear-gradient(180deg, #e8fcec, #d4f5de);
+  box-shadow: 0 0 0 3px rgba(61, 158, 91, 0.28);
+}
+#app[data-theme="forest"] {
+  --accent: #3d9e5b;
+}
+#app[data-theme="forest"] .hud-pill {
+  background: rgba(30, 90, 50, 0.55);
+}
+#app[data-theme="forest"] .touch-btn.jump {
+  background: linear-gradient(180deg, #86efac, #22c55e);
+}
+#app[data-theme="forest"] .primary {
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+}
+#mode-pick {
+  grid-template-columns: 1fr 1fr;
+}

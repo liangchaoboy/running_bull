@@ -1,3 +1,9 @@
+## 2026-10-25 · mobile-web forest1
+
+- 背对四分之三跑姿（bull/deer/dog）+ 优美森林地图（Quaternius/Kenney，无 Glimmerwood）
+- 植物/抽奖/chill/无敌/炸弹保持
+- Pages cache `?v=forest1`
+
 # Changelog
 
 ## 2026-10-25（趣味抽奖海报 + 券规则）

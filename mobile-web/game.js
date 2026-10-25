@@ -222,7 +222,7 @@
   const LS_LB = "rb_leaderboard_v1";
   const LB_MAX = 20;
 
-  /** @type {"earth"|"space"|"chill"|"plant"} */
+  /** @type {"earth"|"space"|"chill"|"plant"|"forest"} */
   let mode = "earth";
 
   let dpr = 1;
@@ -315,6 +315,74 @@
         if (left <= 0) plantAssetsReady = true;
       };
       img.src = "assets/" + key + ".png";
+    });
+  })();
+
+  /** Rear three-quarter run cycles (bull/deer/dog) + beautiful forest map art. */
+  const CHAR_KINDS = ["bull", "deer", "dog"];
+  /** @type {"bull"|"deer"|"dog"} */
+  let heroKind = "bull";
+  const LS_HERO = "rb_hero_v1";
+  try {
+    const hk = localStorage.getItem(LS_HERO);
+    if (hk === "bull" || hk === "deer" || hk === "dog") heroKind = hk;
+  } catch (e) {}
+
+  /** @type {Record<string, HTMLImageElement>} */
+  const charImgs = {};
+  let charAssetsReady = false;
+  (function loadCharAssets() {
+    let left = CHAR_KINDS.length * 5;
+    CHAR_KINDS.forEach((kind) => {
+      for (let f = 0; f < 5; f++) {
+        const key = kind + "_" + f;
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => {
+          charImgs[key] = img;
+          left -= 1;
+          if (left <= 0) charAssetsReady = true;
+        };
+        img.onerror = () => {
+          left -= 1;
+          if (left <= 0) charAssetsReady = true;
+        };
+        img.src = "assets/forest/" + key + ".png";
+      }
+    });
+  })();
+
+  const FOREST_TREE_KEYS = [
+    "tree_quat_common_1",
+    "tree_quat_common_3",
+    "tree_quat_pine_1",
+    "tree_quat_pine_3",
+    "tree_quat_twisted_1",
+    "bush_quat_flowers",
+    "tree_kenney_010",
+    "tree_kenney_007",
+    "tree_kenney_016",
+    "tree_kenney_pine",
+  ];
+  /** @type {Record<string, HTMLImageElement>} */
+  const forestImgs = {};
+  let forestAssetsReady = false;
+  (function loadForestAssets() {
+    const keys = ["forest_backdrop", "forest_road"].concat(FOREST_TREE_KEYS);
+    let left = keys.length;
+    keys.forEach((key) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        forestImgs[key] = img;
+        left -= 1;
+        if (left <= 0) forestAssetsReady = true;
+      };
+      img.onerror = () => {
+        left -= 1;
+        if (left <= 0) forestAssetsReady = true;
+      };
+      img.src = "assets/forest/" + key + ".png";
     });
   })();
 
@@ -727,7 +795,7 @@
   };
 
   function setMode(next) {
-    if (next !== "earth" && next !== "space" && next !== "chill" && next !== "plant") return;
+    if (next !== "earth" && next !== "space" && next !== "chill" && next !== "plant" && next !== "forest") return;
     mode = next;
     appEl.setAttribute("data-theme", mode);
     if (themeMeta) {
@@ -739,7 +807,9 @@
             ? "#7a9e8e"
             : mode === "plant"
               ? "#5a9e3a"
-              : "#1a8cff"
+              : mode === "forest"
+                ? "#3d9e5b"
+                : "#1a8cff"
       );
     }
     if (modePick) {
@@ -757,7 +827,9 @@
             ? "慢慢跑，积分看时长"
             : mode === "space"
               ? "星轨平台，水晶障碍"
-              : "勇敢牛牛，不怕困难";
+              : mode === "forest"
+                ? "阳光神光 · 优美森林"
+                : "勇敢牛牛，不怕困难";
     }
     if (titleHeading) {
       titleHeading.textContent =
@@ -767,20 +839,44 @@
             ? "慢慢跑酷"
             : mode === "space"
               ? "悬空空间"
-              : "天天跑酷";
+              : mode === "forest"
+                ? "优美森林"
+                : "天天跑酷";
     }
     if (modeHint) {
       modeHint.textContent =
         mode === "plant"
           ? "已选植物跑酷 · 点「开始植物跑酷」或再点🌻开跑；🍒=清道10秒"
-          : "选地图 · 点下方卡片（手机无需键盘）";
+          : mode === "forest"
+            ? "已选优美森林 · 背对冲刺 · 道边树影（键6）"
+            : "选地图 · 点下方卡片（手机无需键盘）";
     }
     if (btnStart) {
       btnStart.textContent =
-        mode === "plant" ? "▶ 开始植物跑酷" : "▶ 开始跑";
+        mode === "plant" ? "▶ 开始植物跑酷" : mode === "forest" ? "▶ 开始森林跑" : "▶ 开始跑";
     }
     applyHudLabels();
+    syncHeroPick();
     renderLeaderboards();
+  }
+
+  function setHero(kind) {
+    if (kind !== "bull" && kind !== "deer" && kind !== "dog") return;
+    heroKind = kind;
+    try {
+      localStorage.setItem(LS_HERO, heroKind);
+    } catch (e) {}
+    syncHeroPick();
+  }
+
+  function syncHeroPick() {
+    const pick = document.getElementById("hero-pick");
+    if (!pick) return;
+    pick.querySelectorAll(".hero-card").forEach((btn) => {
+      const on = btn.getAttribute("data-hero") === heroKind;
+      btn.classList.toggle("selected", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
   }
 
   function applyHudLabels() {
@@ -788,8 +884,8 @@
     const plant = mode === "plant";
     if (hudLabelDist) hudLabelDist.textContent = chill ? "时长" : "距离";
     if (hudLabelScore) hudLabelScore.textContent = chill ? "时长积分" : "得分";
-    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : plant ? "🌻" : "🏁";
-    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : plant ? "🧟" : "⭐";
+    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : plant ? "🌻" : mode === "forest" ? "🌲" : "🏁";
+    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : plant ? "🧟" : mode === "forest" ? "☀️" : "⭐";
     if (btnBomb) {
       btnBomb.textContent = plant ? "🍒" : "💣";
       btnBomb.setAttribute(
@@ -3087,6 +3183,200 @@
     ctx.fill();
   }
 
+
+  function drawGodRays(vw, vh, ox, oy) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const originX = ox;
+    const originY = oy;
+    for (let i = 0; i < 9; i++) {
+      const ang = ((-48 + i * 12) * Math.PI) / 180;
+      const spread = 0.04 + (i % 2) * 0.015;
+      const len = vh * 0.92;
+      ctx.beginPath();
+      ctx.moveTo(originX, originY);
+      ctx.lineTo(originX + Math.cos(ang - spread) * len, originY + Math.sin(ang - spread) * len);
+      ctx.lineTo(originX + Math.cos(ang + spread) * len, originY + Math.sin(ang + spread) * len);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,236,170,0.11)" : "rgba(255,244,200,0.07)";
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSkyForest(vw, vh) {
+    const bg = forestImgs.forest_backdrop;
+    if (bg && bg.complete && bg.naturalWidth) {
+      const iw = bg.naturalWidth;
+      const ih = bg.naturalHeight;
+      const scale = Math.max(vw / iw, (vh * 0.55) / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (vw - dw) * 0.5;
+      const dy = vh * 0.0 - dh * 0.05;
+      ctx.drawImage(bg, dx, dy, dw, dh);
+      // extend meadow below backdrop into near field
+      const fade = ctx.createLinearGradient(0, vh * 0.42, 0, vh * 0.62);
+      fade.addColorStop(0, "rgba(70,150,72,0)");
+      fade.addColorStop(1, "rgba(46,120,58,0.85)");
+      ctx.fillStyle = fade;
+      ctx.fillRect(0, vh * 0.4, vw, vh * 0.25);
+      drawGodRays(vw, vh, vw * 0.52, vh * 0.07);
+      return;
+    }
+    const g = ctx.createLinearGradient(0, 0, 0, vh * 0.55);
+    g.addColorStop(0, "#78c4f5");
+    g.addColorStop(0.4, "#bae4ff");
+    g.addColorStop(0.72, "#a8ceaa");
+    g.addColorStop(1, "#5c9e4e");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, vw, vh);
+    // sun
+    const sx = vw * 0.52;
+    const sy = vh * 0.09;
+    const sr = vw * 0.07;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 3.2);
+    halo.addColorStop(0, "rgba(255,240,170,0.65)");
+    halo.addColorStop(1, "rgba(255,240,170,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffe9a8";
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+    drawGodRays(vw, vh, sx, sy);
+    // far canopy ridge
+    ctx.fillStyle = "#3d8a48";
+    ctx.beginPath();
+    ctx.moveTo(0, vh * 0.34);
+    for (let i = 0; i <= 16; i++) {
+      const x = (i / 16) * vw;
+      const y = vh * (0.28 + 0.05 * Math.sin(i * 1.3 + 0.4));
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(vw, vh * 0.48);
+    ctx.lineTo(0, vh * 0.48);
+    ctx.fill();
+  }
+
+  function drawForestTreeSprite(img, x, y, sc, flip) {
+    if (!img || !img.complete || !img.naturalWidth) return;
+    const h = 90 * sc;
+    const w = (img.naturalWidth / img.naturalHeight) * h;
+    ctx.save();
+    ctx.translate(x, y);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(img, -w * 0.5, -h, w, h);
+    ctx.restore();
+  }
+
+  function drawRoadForest(vw, vh) {
+    const far = roadEdges(0, vw, vh);
+    const near = roadEdges(1, vw, vh);
+
+    // lush meadow shoulders
+    const grass = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
+    grass.addColorStop(0, "#6fbf5a");
+    grass.addColorStop(0.5, "#4ea846");
+    grass.addColorStop(1, "#2e8b3a");
+    ctx.fillStyle = grass;
+    ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+
+    // sunlit green path (transparent center for lanes — no opaque mid trees)
+    ctx.beginPath();
+    ctx.moveTo(far.left, far.y);
+    ctx.lineTo(far.right, far.y);
+    ctx.lineTo(near.right, near.y);
+    ctx.lineTo(near.left, near.y);
+    ctx.closePath();
+    const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
+    rg.addColorStop(0, "#9fd86a");
+    rg.addColorStop(0.45, "#7ec85a");
+    rg.addColorStop(1, "#4fa83a");
+    ctx.fillStyle = rg;
+    ctx.fill();
+
+    // soft sun dapples on path
+    for (let i = 0; i < 10; i++) {
+      const z = ((i / 10) + (roadScroll / 900) % 1) % 1;
+      const e = roadEdges(z, vw, vh);
+      const w = e.right - e.left;
+      ctx.fillStyle = "rgba(255,236,160," + (0.06 + 0.1 * z) + ")";
+      ctx.beginPath();
+      ctx.ellipse(e.left + w * (0.25 + (i % 3) * 0.22), e.y, 14 * z + 6, 5 * z + 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    drawTrackGrooves(vw, vh, "rgba(30,90,40,0.28)", 6);
+
+    // lane dashes
+    ctx.strokeStyle = "rgba(255,248,220,0.75)";
+    for (let lane = 0; lane < 2; lane++) {
+      let drawing = false;
+      const dashPeriod = 0.14;
+      const offset = (roadScroll / 240) % dashPeriod;
+      ctx.lineWidth = 2.5;
+      for (let z = 0; z <= 1; z += 0.02) {
+        const e = roadEdges(z, vw, vh);
+        const x = e.left + (e.right - e.left) * ((lane + 1) / 3);
+        const phase = (z + offset) % dashPeriod;
+        const on = phase < dashPeriod * 0.4;
+        if (on) {
+          if (!drawing) {
+            ctx.beginPath();
+            ctx.moveTo(x, e.y);
+            drawing = true;
+          } else ctx.lineTo(x, e.y);
+        } else if (drawing) {
+          ctx.stroke();
+          drawing = false;
+        }
+      }
+      if (drawing) ctx.stroke();
+    }
+
+    // scrolling roadside overlay (transparent center)
+    const roadImg = forestImgs.forest_road;
+    if (roadImg && roadImg.complete && roadImg.naturalWidth) {
+      const stripH = vh * 0.62;
+      const period = stripH;
+      const scrollY = (roadScroll * 0.55) % period;
+      for (let k = -1; k <= 1; k++) {
+        const dy = far.y - scrollY + k * period;
+        ctx.globalAlpha = 0.92;
+        ctx.drawImage(roadImg, 0, dy, vw, period);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Quaternius / Kenney trees along path edges (depth sorted by z)
+    const treeKeys = FOREST_TREE_KEYS;
+    for (let i = 0; i < 12; i++) {
+      const z = ((i / 12) + (roadScroll / 780) % 1) % 1;
+      if (z < 0.03 || z > 0.97) continue;
+      const e = roadEdges(z, vw, vh);
+      const sc = 0.4 + z * 1.15;
+      const key = treeKeys[i % treeKeys.length];
+      const img = forestImgs[key];
+      const side = i % 2 === 0 ? -1 : 1;
+      const x = side < 0 ? e.left - 18 * sc : e.right + 18 * sc;
+      drawForestTreeSprite(img, x, e.y + 4 * sc, sc * (0.85 + (i % 3) * 0.12), side > 0 && i % 3 === 0);
+    }
+    // near flower bushes
+    const bush = forestImgs.bush_quat_flowers;
+    if (bush) {
+      for (let i = 0; i < 4; i++) {
+        const z = 0.72 + i * 0.06;
+        const e = roadEdges(Math.min(0.98, z), vw, vh);
+        const sc = 0.55 + z * 0.5;
+        drawForestTreeSprite(bush, e.left - 10 * sc, e.y + 6, sc * 0.55, false);
+        drawForestTreeSprite(bush, e.right + 10 * sc, e.y + 6, sc * 0.55, true);
+      }
+    }
+  }
+
   function drawPlayer(vw, vh) {
     const laneF = player.displayLane;
     const lane0 = Math.floor(laneF);
@@ -3110,7 +3400,6 @@
       ctx.beginPath();
       ctx.arc(x, y - 12 * scale, 46 * scale, 0, Math.PI * 2);
       ctx.fill();
-      // shield ring
       ctx.strokeStyle = "rgba(255,230,120," + (0.7 * pulse) + ")";
       ctx.lineWidth = 3 * scale;
       ctx.beginPath();
@@ -3146,7 +3435,52 @@
     }
 
     const py = y - jumpY;
-    // Punchy run cycle: stronger bob, opposite arm/leg drive, forward lean.
+
+    // Prefer XB rear three-quarter sprites: locked rotation, hips-near/head-far, run bob.
+    const rearOk = drawPlayerRear(x, py, scale, stretch);
+    if (rearOk) return;
+
+    // Fallback procedural sticker (legacy) if sprites not ready
+    drawPlayerProcedural(x, py, scale, stretch);
+  }
+
+  /** Rear ¾ run cycle from assets/forest/{bull,deer,dog}_0..4.png — no side rotate. */
+  function drawPlayerRear(x, py, scale, stretch) {
+    const kind = heroKind || "bull";
+    let frame = 0;
+    if (player.jumping) frame = 4;
+    else if (player.sliding) frame = 2; // tucked-ish mid stride; pose still rear-locked
+    else {
+      // steady stride frame from runPhase
+      frame = Math.floor(((runPhase * 2.2) % 4 + 4) % 4);
+    }
+    const img = charImgs[kind + "_" + frame];
+    if (!img || !img.complete || !img.naturalWidth) return false;
+
+    // Vertical bob from stride (XB: hop on odd frames) — locked rotation (no lean rotate)
+    const stride = Math.sin(runPhase * 2.4);
+    const bob = player.jumping || player.sliding ? 0 : Math.abs(stride) * 6.5 * scale;
+    // slight lateral settle toward target lane without rotating the sprite
+    const settleX = (player.lane - player.displayLane) * -10 * scale;
+
+    const drawH = (player.sliding ? 78 : 96) * scale;
+    const drawW = drawH * (img.naturalWidth / img.naturalHeight);
+    // hips-near / head-far: mild extra vertical squash toward feet (sprite already pear-shaped)
+    const hipNear = player.sliding ? 0.78 : 1.08;
+    const headFar = player.sliding ? 0.9 : 0.92;
+
+    ctx.save();
+    ctx.translate(x + settleX, py + bob + (player.sliding ? 12 * scale : 0));
+    ctx.scale(1 / Math.sqrt(stretch), stretch);
+    // NO ctx.rotate — locked rear view (not side sticker)
+    ctx.scale(1, hipNear);
+    ctx.globalAlpha = isInvulnerable() ? 0.85 + 0.15 * Math.sin(animTime * 12) : 1;
+    ctx.drawImage(img, -drawW * 0.5, -drawH * headFar, drawW, drawH);
+    ctx.restore();
+    return true;
+  }
+
+  function drawPlayerProcedural(x, py, scale, stretch) {
     const stride = Math.sin(runPhase * 2.4);
     const strideTri = Math.asin(Math.max(-1, Math.min(1, Math.sin(runPhase * 2.4)))) / (Math.PI / 2);
     const bob = player.jumping || player.sliding ? 0 : Math.abs(stride) * 5.5 * scale;
@@ -3161,16 +3495,14 @@
     ctx.scale(1 / Math.sqrt(stretch), stretch * (player.sliding ? 0.72 : 1));
     ctx.rotate((lean * Math.PI) / 180);
 
-    const body = mode === "space" ? "#d4899a" : mode === "chill" ? "#c9a07a" : "#c47a2c";
-    const bodyHi = mode === "space" ? "#e8a0b0" : mode === "chill" ? "#e0c4a0" : "#d4893a";
-    const limb = mode === "space" ? "#9a6bb5" : mode === "chill" ? "#7a6a55" : "#5c3a1e";
+    const body = mode === "space" ? "#d4899a" : mode === "chill" ? "#c9a07a" : mode === "forest" ? "#e8eef6" : "#c47a2c";
+    const bodyHi = mode === "space" ? "#e8a0b0" : mode === "chill" ? "#e0c4a0" : mode === "forest" ? "#f7fafc" : "#d4893a";
+    const limb = mode === "space" ? "#9a6bb5" : mode === "chill" ? "#7a6a55" : mode === "forest" ? "#8a9aac" : "#5c3a1e";
 
-    // HARD-CUT slide pose (no blend with run cycle)
     if (player.sliding) {
       ctx.strokeStyle = limb;
       ctx.lineWidth = 5 * scale;
       ctx.lineCap = "round";
-      // tucked legs forward
       ctx.beginPath();
       ctx.moveTo(-8 * scale, 4 * scale);
       ctx.lineTo(18 * scale, 10 * scale);
@@ -3183,7 +3515,6 @@
       ctx.ellipse(28 * scale, 14 * scale, 5 * scale, 2.5 * scale, 0.2, 0, Math.PI * 2);
       ctx.ellipse(22 * scale, 16 * scale, 5 * scale, 2.5 * scale, 0.2, 0, Math.PI * 2);
       ctx.fill();
-      // body low / long
       const bodyG = ctx.createRadialGradient(-4 * scale, -6 * scale, 3, 0, 0, 26 * scale);
       bodyG.addColorStop(0, bodyHi);
       bodyG.addColorStop(1, body);
@@ -3191,7 +3522,6 @@
       ctx.beginPath();
       ctx.ellipse(2 * scale, -2 * scale, 28 * scale, 16 * scale, 0.15, 0, Math.PI * 2);
       ctx.fill();
-      // head tucked
       ctx.fillStyle = bodyHi;
       ctx.beginPath();
       ctx.ellipse(22 * scale, -14 * scale, 13 * scale, 11 * scale, 0.2, 0, Math.PI * 2);
@@ -3204,12 +3534,10 @@
       return;
     }
 
-    // legs with joints (run)
     ctx.strokeStyle = limb;
     ctx.lineWidth = 5.5 * scale;
     ctx.lineCap = "round";
     const hipY = 8 * scale;
-    // left
     const lx1 = -9 * scale;
     const lx2 = -9 * scale - legSwing * 16 * scale;
     const ly2 = 16 * scale + Math.abs(legSwing) * 2 * scale;
@@ -3220,7 +3548,6 @@
     ctx.lineTo(lx2, ly2);
     ctx.lineTo(lx3, ly3);
     ctx.stroke();
-    // right
     const rx1 = 9 * scale;
     const rx2 = 9 * scale + legSwing * 16 * scale;
     const ry2 = 16 * scale + Math.abs(legSwing) * 2 * scale;
@@ -3231,14 +3558,12 @@
     ctx.lineTo(rx2, ry2);
     ctx.lineTo(rx3, ry3);
     ctx.stroke();
-    // hooves
     ctx.fillStyle = "#2a1810";
     ctx.beginPath();
     ctx.ellipse(lx3, ly3 + 2 * scale, 5 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
     ctx.ellipse(rx3, ry3 + 2 * scale, 5 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // arms (counter to legs, bigger pump)
     ctx.strokeStyle = limb;
     ctx.lineWidth = 4.2 * scale;
     ctx.beginPath();
@@ -3248,7 +3573,6 @@
     ctx.lineTo(16 * scale + armSwing * 16 * scale, 4 * scale + Math.abs(armSwing) * 6 * scale);
     ctx.stroke();
 
-    // body
     const bodyG = ctx.createRadialGradient(-6 * scale, -14 * scale, 4, 0, -6 * scale, 28 * scale);
     bodyG.addColorStop(0, bodyHi);
     bodyG.addColorStop(1, body);
@@ -3257,13 +3581,11 @@
     ctx.ellipse(0, -6 * scale, 23 * scale, 27 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // belly patch
     ctx.fillStyle = mode === "space" ? "rgba(255,220,230,0.55)" : "rgba(240,210,160,0.55)";
     ctx.beginPath();
     ctx.ellipse(0, 2 * scale, 12 * scale, 14 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // tail wag
     ctx.strokeStyle = limb;
     ctx.lineWidth = 3.5 * scale;
     const wag = Math.sin(runPhase * 3.6) * 14 * scale;
@@ -3272,13 +3594,11 @@
     ctx.quadraticCurveTo(28 * scale + wag, -8 * scale, 32 * scale + wag * 0.5, 6 * scale);
     ctx.stroke();
 
-    // head
     ctx.fillStyle = bodyHi;
     ctx.beginPath();
     ctx.ellipse(0, -36 * scale, 17 * scale, 15 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // horns
     ctx.strokeStyle = mode === "space" ? "#f5e6ff" : "#eee8d5";
     ctx.lineWidth = 4.2 * scale;
     ctx.lineCap = "round";
@@ -3289,14 +3609,12 @@
     ctx.quadraticCurveTo(24 * scale, -54 * scale, 18 * scale, -62 * scale);
     ctx.stroke();
 
-    // ears
     ctx.fillStyle = body;
     ctx.beginPath();
     ctx.ellipse(-14 * scale, -40 * scale, 5 * scale, 7 * scale, -0.4, 0, Math.PI * 2);
     ctx.ellipse(14 * scale, -40 * scale, 5 * scale, 7 * scale, 0.4, 0, Math.PI * 2);
     ctx.fill();
 
-    // eyes + shine
     ctx.fillStyle = "#1a1008";
     ctx.beginPath();
     ctx.arc(-5.5 * scale, -38 * scale, 2.4 * scale, 0, Math.PI * 2);
@@ -3308,7 +3626,6 @@
     ctx.arc(6.5 * scale, -39 * scale, 0.9 * scale, 0, Math.PI * 2);
     ctx.fill();
 
-    // snout
     ctx.fillStyle = mode === "space" ? "#ffd0e0" : "#f0c8a0";
     ctx.beginPath();
     ctx.ellipse(0, -28 * scale, 9 * scale, 5.5 * scale, 0, 0, Math.PI * 2);
@@ -3512,7 +3829,9 @@
           ? "rgba(255,240,220,0.5)"
           : mode === "plant"
             ? "rgba(220,255,200,0.55)"
-            : "rgba(255,255,255,0.35)";
+            : mode === "forest"
+              ? "rgba(220,255,200,0.5)"
+              : "rgba(255,255,255,0.35)";
     ctx.font = "bold 16px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(
@@ -3520,7 +3839,9 @@
         ? "慢慢跑酷 · 积分看时长 😎"
         : mode === "plant"
           ? "植物跑酷 · 捡植物打僵尸 🌻"
-          : "勇敢牛牛，不怕困难",
+          : mode === "forest"
+            ? "优美森林 · 背对冲刺 🌲"
+            : "勇敢牛牛，不怕困难",
       vw / 2,
       vh * 0.14
     );
@@ -3543,6 +3864,9 @@
     } else if (mode === "plant") {
       drawSkyPlant(vw, vh);
       drawRoadPlant(vw, vh);
+    } else if (mode === "forest") {
+      drawSkyForest(vw, vh);
+      drawRoadForest(vw, vh);
     } else {
       drawSkyEarth(vw, vh);
       drawRoadEarth(vw, vh);
@@ -3610,6 +3934,21 @@
       return;
     }
     setMode(modeId);
+  }
+
+  const heroPick = document.getElementById("hero-pick");
+  if (heroPick) {
+    heroPick.querySelectorAll(".hero-card").forEach((btn) => {
+      btn.addEventListener(
+        "pointerdown",
+        (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setHero(btn.getAttribute("data-hero"));
+        },
+        { passive: false }
+      );
+    });
   }
 
   if (modePick) {
@@ -3789,6 +4128,9 @@
       case "4":
         if (!running) setMode("earth");
         break;
+      case "6":
+        if (!running) setMode("forest");
+        break;
       case "7":
         if (!running) setMode("space");
         break;
@@ -3797,6 +4139,15 @@
         break;
       case "9":
         if (!running) setMode("plant");
+        break;
+      case "1":
+        if (!running) setHero("bull");
+        break;
+      case "2":
+        if (!running) setHero("deer");
+        break;
+      case "3":
+        if (!running) setHero("dog");
         break;
       default:
         break;

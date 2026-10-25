@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1a8cff" />
   <meta name="description" content="勇敢牛牛，不怕困难 —— 竖屏三道跑酷，微信可开" />
   <title>勇敢牛牛 · 手机跑酷</title>
-  <link rel="stylesheet" href="style.css?v=lottery1" />
+  <link rel="stylesheet" href="style.css?v=forest1" />
 </head>
 <body>
   <div id="app" data-theme="earth">
@@ -62,14 +62,34 @@
         <h1 id="title-heading">天天跑酷</h1>
         <p class="hint" id="mode-hint">选地图 · 点下方卡片（手机无需键盘）</p>
 
+        <div id="hero-pick" role="group" aria-label="选择角色">
+          <button type="button" class="hero-card selected" data-hero="bull" aria-pressed="true">
+            <span class="hero-emoji" aria-hidden="true">🐂</span>
+            <span class="hero-name">牛牛</span>
+          </button>
+          <button type="button" class="hero-card" data-hero="deer" aria-pressed="false">
+            <span class="hero-emoji" aria-hidden="true">🦌</span>
+            <span class="hero-name">小鹿</span>
+          </button>
+          <button type="button" class="hero-card" data-hero="dog" aria-pressed="false">
+            <span class="hero-emoji" aria-hidden="true">🐕</span>
+            <span class="hero-name">小狗</span>
+          </button>
+        </div>
+
         <div id="mode-pick" role="group" aria-label="选择地图">
           <button type="button" class="mode-card selected" data-mode="earth" aria-pressed="true">
             <span class="mode-emoji" aria-hidden="true">🛤️</span>
             <span class="mode-name">土路跑酷</span>
             <span class="mode-desc">阳光土路 · 列车路障</span>
           </button>
-          <button type="button" class="mode-card plant" data-mode="plant" aria-pressed="false">
+          <button type="button" class="mode-card forest" data-mode="forest" aria-pressed="false">
             <span class="mode-badge" aria-hidden="true">新</span>
+            <span class="mode-emoji" aria-hidden="true">🌲</span>
+            <span class="mode-name">优美森林</span>
+            <span class="mode-desc">神光小径 · 道边树影</span>
+          </button>
+          <button type="button" class="mode-card plant" data-mode="plant" aria-pressed="false">
             <span class="mode-emoji" aria-hidden="true">🌻</span>
             <span class="mode-name">植物跑酷</span>
             <span class="mode-desc">草坪打僵尸 · 向日葵/加特林</span>
@@ -102,6 +122,7 @@
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
           <li>下滑 / ↓ = 滑铲（硬切蹲姿，可钻低障）</li>
           <li>💣 / 植物模式 🍒：清当前道（植物模式连续 10 秒）</li>
+          <li>🌲 优美森林：背对四分之三跑 · 神光树影（键6）</li>
           <li>🌻 植物跑酷：捡向日葵/豌豆/加特林/坚果打僵尸</li>
           <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍</li>
         </ul>
@@ -157,6 +178,6 @@
       </div>
     </div>
   </div>
-  <script src="game.js?v=lottery1"></script>
+  <script src="game.js?v=forest1"></script>
 </body>
 </html>

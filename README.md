@@ -10,6 +10,7 @@
 > 2026-10-25：手机网页版新增 **慢慢跑酷 / 植物跑酷**（积分主看存活时长）。XBuilder 对齐笔记：[`docs/XBUILDER_CHILL_MODE.md`](docs/XBUILDER_CHILL_MODE.md)（仓库无 XBuilder 工程，未能在此 Publish）。
 >
 > 另：mobile-web 已加 **无敌冲撞 ×3**（10 秒撞碎）。见 [`docs/XBUILDER_INVULN.md`](docs/XBUILDER_INVULN.md)。
+> 2026-10-25：mobile-web 已同步 **背对冲刺** + **优美森林**（[`docs/XBUILDER_FOREST_REAR.md`](docs/XBUILDER_FOREST_REAR.md)）。
 >
 > 2026-10-25 手感 Publish：稳步幅、换道 0.88 贴齐、路更宽（±96 / pinch 0.78）、无敌冲撞 I/V/Q ×3·10s、慢慢跑酷 HUD「时长」。清单：[`docs/XBUILDER_FEEL_CATCHUP.md`](docs/XBUILDER_FEEL_CATCHUP.md)。
 
@@ -24,7 +25,7 @@ cd mobile-web && python3 -m http.server 8080
 
 - 竖屏三道 · 触控换道 / 跳 / 炸弹 · 捡金币  
 - 说明与托管建议见 [`mobile-web/README.md`](mobile-web/README.md)  
-- GitHub Pages（已开，备用）：[https://liangchaoboy.github.io/running_bull/mobile-web/](https://liangchaoboy.github.io/running_bull/mobile-web/) — **国内微信常慢/打不开，勿当主入口**
+- GitHub Pages（已开，备用）：[https://liangchaoboy.github.io/running_bull/mobile-web/?v=forest1](https://liangchaoboy.github.io/running_bull/mobile-web/) — **国内微信常慢/打不开，勿当主入口**
 - 正式公网 URL 请部署到七牛 Kodo/CDN、Gitee Pages 或自有域名后补在此处
 
 **仓库：** https://github.com/liangchaoboy/running_bull  
