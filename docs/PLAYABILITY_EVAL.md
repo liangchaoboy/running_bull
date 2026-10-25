@@ -114,7 +114,7 @@ A操作__ B公平__ C前8s__ D死亡__ E擦边__ F爬坡__ G分数__ H分享__
 
 ---
 
-## 7. 记录 · 2026-10-25 Asia/Shanghai（预判 · 当前 Publish）
+## 7. 记录 · 2026-10-25 Asia/Shanghai（预判 · 已由 §8 实测 superseded）
 
 > **非正式实测**：无浏览器实机连开 3 局；分数来自 `mobile-web/game.js` + CHANGELOG + 同日 Publish 笔记 + `XB_DEMO_BLOCKERS`。标 **预判**。正式分以真人按 §2 重跑为准。  
 > 构建：mobile-web [`966085d`](https://github.com/liangchaoboy/running_bull/commit/966085d) · [?v=adsense1](https://liangchaoboy.github.io/running_bull/mobile-web/?v=adsense1)；XBuilder [同链](https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull)（forest / hero3d / reward 已对齐）。  
@@ -140,3 +140,32 @@ A操作 4  B公平 4  C前8s 3  D死亡 4  E擦边 2  F爬坡 3  G分数 3  H分
 | H | **3** | 抽奖海报/奖金条有钩子；手感未到「想踢馆」 | 打完是否想截结算发群 |
 
 相对 §4 初版预判（A 硬失败）：手感/碰撞已抬到硬门槛过关；**剩余最大洞仍是 E 擦边**。
+
+---
+
+## 8. 记录 · 2026-10-25 Asia/Shanghai（实测 · 权威）
+
+> computerUse · desktop Chrome ~420px · 硬刷 [?v=adsense1](https://liangchaoboy.github.io/running_bull/mobile-web/?v=adsense1)。  
+> 截图：`docs/playtest-2026-10-25/` · 全套 `/workspace/playtest/01…13`。  
+> 汇总：[`EVAL_2026-10-25.md`](EVAL_2026-10-25.md)（§7 预判已 superseded）。
+
+```
+日期：2026-10-25  试玩人：computerUse 实测  设备：desktop Chrome ~420px  构建：?v=adsense1 / HEAD≈966085d + XB 同链
+A操作 4  B公平 4  C前8s 4  D死亡 4  E擦边 4  F爬坡 4  G分数 4  H分享 3
+总分 31/40  硬门槛(A,B,D≥4)：过   软门槛(≥28 且 C,E,F≥3)：过
+最痛 1 句：撞障走激励续跑，#over 几乎不出 → 再玩/分享节拍弱（H=3）。
+下轮只改：① 恢复可感知结算/认输路径 ② 可选真擦边勇敢电报 ③ 假片明示「撞到了」+ AdSense ca-pub
+```
+
+| 项 | 分 | 实测笔记 |
+|----|----|----------|
+| A | **4** | 跳/换道跟手，无演示级卡顿 |
+| B | **4** | 跳过普通障公平；无「看着过了却死」尴尬局 |
+| C | **4** | 开局约 8s 内能懂操作并过障 |
+| D | **4** | 激励假片暂停可读；未写「撞到了」；~2s 自动可完成；本局未出 `#over` |
+| E | **4** | 金币/`+10`/清道 toast 可见；**无**独立擦边勇敢线 |
+| F | **4** | 前段可学、后续有加压感 |
+| G | **4** | HUD 距离/币/分可读 |
+| H | **3** | 续跑弱化「再来一局」欲；结算卡未展示 |
+
+相对 §7 预判（26、E=2、软不过）：实测抬 C/E/F/G，软门槛过；H 仍 3。
