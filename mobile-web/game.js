@@ -1067,7 +1067,7 @@
     roadScroll += speed * dt;
     distance += (speed * dt) / 18;
     // Steady stride: base cadence + light speed coupling (less "panic legs").
-    runPhase += dt * (1.9 + speed * 0.0035);
+    runPhase += dt * (2.15 + speed * 0.0055);
     sessionPlaySec += dt;
 
     player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * LANE_LERP);
@@ -1830,46 +1830,78 @@
 
   function drawCoin(p, space) {
     const s = p.scale;
-    const r = 12 * s;
-    const y = p.y - 10 * s;
-    // glow
-    const g = ctx.createRadialGradient(p.x, y, 0, p.x, y, r * 2.2);
-    g.addColorStop(0, space ? "rgba(255,180,230,0.55)" : "rgba(255,220,80,0.5)");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
+    const r = 11 * s;
+    // Hover above the road + light bob so it reads as a floating coin
+    const bobY = Math.sin(animTime * 3.2 + p.x * 0.02) * 3.2 * s;
+    const y = p.y - 26 * s + bobY;
+
+    // Ground shadow (clear oval under the floating coin)
+    ctx.fillStyle = space ? "rgba(120,60,160,0.28)" : "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.arc(p.x, y, r * 2.2, 0, Math.PI * 2);
+    ctx.ellipse(p.x, p.y + 2 * s, r * 0.95, r * 0.32, 0, 0, Math.PI * 2);
     ctx.fill();
-    // body
-    const cg = ctx.createLinearGradient(p.x - r, y - r, p.x + r, y + r);
+
+    // Soft metallic halo (subtle — not a glow orb)
+    const halo = ctx.createRadialGradient(p.x, y, r * 0.4, p.x, y, r * 1.7);
+    halo.addColorStop(0, space ? "rgba(255,200,230,0.22)" : "rgba(255,210,80,0.2)");
+    halo.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(p.x, y, r * 1.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thick coin face — metal disc with dark rim + bright face
+    const face = ctx.createLinearGradient(p.x - r, y - r, p.x + r, y + r);
     if (space) {
-      cg.addColorStop(0, "#ffe0f2");
-      cg.addColorStop(0.45, "#ff9ed2");
-      cg.addColorStop(1, "#e879f9");
+      // rose-gold metal (still a coin, not a pink orb)
+      face.addColorStop(0, "#fff0e8");
+      face.addColorStop(0.35, "#f6c4a8");
+      face.addColorStop(0.7, "#e08a9a");
+      face.addColorStop(1, "#b85a78");
     } else {
-      cg.addColorStop(0, "#fff6a0");
-      cg.addColorStop(0.4, "#ffd700");
-      cg.addColorStop(1, "#e6a800");
+      face.addColorStop(0, "#fff8c8");
+      face.addColorStop(0.3, "#ffe066");
+      face.addColorStop(0.65, "#f0b400");
+      face.addColorStop(1, "#b87a00");
     }
     ctx.beginPath();
-    ctx.fillStyle = cg;
-    ctx.strokeStyle = space ? "#f0abfc" : "#c48900";
-    ctx.lineWidth = 2.2 * s;
+    ctx.fillStyle = face;
     ctx.arc(p.x, y, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
-    // inner ring + star
+
+    // Outer thick rim (coin edge)
     ctx.beginPath();
-    ctx.strokeStyle = space ? "rgba(255,255,255,0.7)" : "rgba(255,255,200,0.85)";
-    ctx.lineWidth = 1.5 * s;
-    ctx.arc(p.x, y, r * 0.62, 0, Math.PI * 2);
+    ctx.strokeStyle = space ? "#8a3a58" : "#8a5a00";
+    ctx.lineWidth = 2.8 * s;
+    ctx.arc(p.x, y, r - 0.4 * s, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = "#fff";
-    ctx.globalAlpha = 0.9;
+
+    // Inner raised ring
     ctx.beginPath();
-    ctx.arc(p.x - 3.5 * s, y - 3.5 * s, 2.4 * s, 0, Math.PI * 2);
+    ctx.strokeStyle = space ? "rgba(255,230,240,0.75)" : "rgba(255,240,170,0.9)";
+    ctx.lineWidth = 1.6 * s;
+    ctx.arc(p.x, y, r * 0.72, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Embossed ¥ (reads as currency coin across themes)
+    ctx.fillStyle = space ? "rgba(90,30,50,0.72)" : "rgba(120,70,0,0.78)";
+    ctx.font = "bold " + Math.max(9, 13 * s) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("¥", p.x, y + 0.5 * s);
+
+    // Specular highlight (upper-left metal glint)
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.beginPath();
+    ctx.ellipse(p.x - 3.2 * s, y - 3.8 * s, 2.6 * s, 1.7 * s, -0.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+
+    // Lower dark crescent (thickness / bevel)
+    ctx.strokeStyle = space ? "rgba(60,20,40,0.35)" : "rgba(80,45,0,0.35)";
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.arc(p.x, y, r * 0.88, 0.35, Math.PI - 0.35);
+    ctx.stroke();
   }
 
   function drawEntity(e, vw, vh) {
@@ -2312,15 +2344,15 @@
     }
 
     const py = y - jumpY;
-    // Steady stride: mild bob; triangle-ish leg drive (clearer steps than soft sin).
-    const stride = Math.sin(runPhase * 2.2);
-    const strideTri = Math.asin(Math.max(-1, Math.min(1, Math.sin(runPhase * 2.2)))) / (Math.PI / 2);
-    const bob = player.jumping || player.sliding ? 0 : stride * 2.2 * scale;
+    // Punchy run cycle: stronger bob, opposite arm/leg drive, forward lean.
+    const stride = Math.sin(runPhase * 2.4);
+    const strideTri = Math.asin(Math.max(-1, Math.min(1, Math.sin(runPhase * 2.4)))) / (Math.PI / 2);
+    const bob = player.jumping || player.sliding ? 0 : Math.abs(stride) * 5.5 * scale;
     const lean =
-      (player.lane - player.displayLane) * -10 +
-      (player.jumping ? -8 : player.sliding ? 18 : stride * 2.5);
-    const legSwing = player.jumping ? 0.55 : player.sliding ? 0 : strideTri;
-    const armSwing = player.jumping ? -0.4 : player.sliding ? 0.2 : -strideTri;
+      (player.lane - player.displayLane) * -12 +
+      (player.jumping ? -8 : player.sliding ? 18 : 7 + stride * 4);
+    const legSwing = player.jumping ? 0.55 : player.sliding ? 0 : strideTri * 1.35;
+    const armSwing = player.jumping ? -0.4 : player.sliding ? 0.2 : -strideTri * 1.35;
 
     ctx.save();
     ctx.translate(x, py + bob + (player.sliding ? 10 * scale : 0));
@@ -2377,10 +2409,10 @@
     const hipY = 8 * scale;
     // left
     const lx1 = -9 * scale;
-    const lx2 = -9 * scale - legSwing * 12 * scale;
-    const ly2 = 18 * scale;
-    const lx3 = lx2 - legSwing * 6 * scale;
-    const ly3 = 30 * scale;
+    const lx2 = -9 * scale - legSwing * 16 * scale;
+    const ly2 = 16 * scale + Math.abs(legSwing) * 2 * scale;
+    const lx3 = lx2 - legSwing * 9 * scale;
+    const ly3 = 30 * scale - Math.max(0, legSwing) * 4 * scale;
     ctx.beginPath();
     ctx.moveTo(lx1, hipY);
     ctx.lineTo(lx2, ly2);
@@ -2388,10 +2420,10 @@
     ctx.stroke();
     // right
     const rx1 = 9 * scale;
-    const rx2 = 9 * scale + legSwing * 12 * scale;
-    const ry2 = 18 * scale;
-    const rx3 = rx2 + legSwing * 6 * scale;
-    const ry3 = 30 * scale;
+    const rx2 = 9 * scale + legSwing * 16 * scale;
+    const ry2 = 16 * scale + Math.abs(legSwing) * 2 * scale;
+    const rx3 = rx2 + legSwing * 9 * scale;
+    const ry3 = 30 * scale - Math.max(0, -legSwing) * 4 * scale;
     ctx.beginPath();
     ctx.moveTo(rx1, hipY);
     ctx.lineTo(rx2, ry2);
@@ -2404,14 +2436,14 @@
     ctx.ellipse(rx3, ry3 + 2 * scale, 5 * scale, 2.5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // arms
+    // arms (counter to legs, bigger pump)
     ctx.strokeStyle = limb;
-    ctx.lineWidth = 4 * scale;
+    ctx.lineWidth = 4.2 * scale;
     ctx.beginPath();
     ctx.moveTo(-16 * scale, -8 * scale);
-    ctx.lineTo(-16 * scale - armSwing * 10 * scale, 8 * scale);
+    ctx.lineTo(-16 * scale - armSwing * 16 * scale, 4 * scale + Math.abs(armSwing) * 6 * scale);
     ctx.moveTo(16 * scale, -8 * scale);
-    ctx.lineTo(16 * scale + armSwing * 10 * scale, 8 * scale);
+    ctx.lineTo(16 * scale + armSwing * 16 * scale, 4 * scale + Math.abs(armSwing) * 6 * scale);
     ctx.stroke();
 
     // body
@@ -2432,7 +2464,7 @@
     // tail wag
     ctx.strokeStyle = limb;
     ctx.lineWidth = 3.5 * scale;
-    const wag = Math.sin(runPhase * 3.2) * 10 * scale;
+    const wag = Math.sin(runPhase * 3.6) * 14 * scale;
     ctx.beginPath();
     ctx.moveTo(18 * scale, 0);
     ctx.quadraticCurveTo(28 * scale + wag, -8 * scale, 32 * scale + wag * 0.5, 6 * scale);

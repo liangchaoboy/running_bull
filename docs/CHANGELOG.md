@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-25（金币金属币 + 跑动感加强）
+
+- **金币**：改成金属厚币（外缘/内环/「¥」压印、高光与暗边），相对地面抬高悬空并轻 bob，画清晰椭圆阴影；space 为玫瑰金币、土路/chill 仍是金币感。
+- **跑动**：加大步幅 bob、腿摆与手臂对摆、前倾；步频略跟速度；跳/滑铲硬切/换道 lean/无敌高亮保留。
+- 仅 `mobile-web/game.js` + docs；未改 XBuilder。
+
+
 ## 2026-10-25（手感追赶：稳步幅 + 滑铲硬切 + XBuilder 清单）
 
 - 文档：[`XBUILDER_FEEL_CATCHUP.md`](XBUILDER_FEEL_CATCHUP.md) — Zurich/Subway Publish 勾选（跑步稳步、滑铲硬切、换道 snap、纵深加宽、无敌/慢慢同步）。**Publish 需 computerUse（桌面忙）。**
