@@ -1,5 +1,12 @@
 ## 2026-10-25 · mobile-web forest1
 
+## 2026-10-25 · feel1（抬 H / 擦边 / 撞到了 / 悬空）
+
+- 激励跳过两次 → 结算 `#over`；文案「撞到了」；邻道擦边 toast；悬空景深加强。
+- Pages `?v=feel1`；XB 见 `xb_src/patches/APPLY_H_EDGE_HIT_SPACE.md`（需 Publish）。
+- 详 [`FEEL1_H_EDGE_SPACE.md`](FEEL1_H_EDGE_SPACE.md)。
+
+
 - 背对四分之三跑姿（bull/deer/dog）+ 优美森林地图（Quaternius/Kenney，无 Glimmerwood）
 - 植物/抽奖/chill/无敌/炸弹保持
 - Pages cache `?v=forest1`

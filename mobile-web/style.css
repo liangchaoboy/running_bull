@@ -1344,3 +1344,10 @@ html, body {
 .legal-note {
   color: #94a3b8;
 }
+
+/* feel1: 认栽结算 */
+.rewarded-ad-actions .ghost.danger {
+  border-color: rgba(248, 113, 113, 0.75);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.35);
+}

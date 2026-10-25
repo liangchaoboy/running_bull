@@ -55,6 +55,7 @@
   const overPlaytimeEl = document.getElementById("over-playtime");
   const rewardedAdEl = document.getElementById("rewarded-ad");
   const rewardedAdCountdown = document.getElementById("rewarded-ad-countdown");
+  const rewardedAdTitle = document.getElementById("rewarded-ad-title");
   const rewardedAdHint = document.getElementById("rewarded-ad-hint");
   const rewardedAdCompleteBtn = document.getElementById("rewarded-ad-complete");
   const rewardedAdSkipBtn = document.getElementById("rewarded-ad-skip");
@@ -76,6 +77,16 @@
   const REWARD_AD_DURATION = 2.0;
   const REWARD_AD_INVULN = 1.8;
   const REWARD_AD_SHIELD = 3.0;
+  /** Consecutive ad skips without completing → force #over (raise H). */
+  const REWARD_SKIP_FORCE_OVER = 2;
+  /** Near-miss graze window (adjacent lane / lateral miss). */
+  const GRAZE_Z_MIN = 0.66;
+  const GRAZE_Z_MAX = 0.88;
+  const NEAR_MISS_SCORE = 8;
+  const NEAR_MISS_COIN = 1;
+  /** 悬空: tighter vanish + wider near for stronger corridor taper. */
+  const ROAD_HALF_FAR_SPACE = 0.065;
+  const ROAD_HALF_NEAR_SPACE = 0.54;
   /** 优美森林 / 土路：灭点与路心横向弯道（相对 vw）。 */
   const CURVE_K_FOREST = 0.038;
   const CURVE_AMP_FOREST = 0.06;
@@ -313,6 +324,9 @@
   let pendingHitObstacle = null;
   let rewardToastT = 0;
   let rewardAdToken = 0;
+  /** Skips without a completed ad this run; ≥ REWARD_SKIP_FORCE_OVER → over. */
+  let rewardSkipStreak = 0;
+  let nearMissCd = 0;
   let coinPulseT = 0;
   let landDustT = 0;
 
@@ -429,15 +443,20 @@
     });
   })();
 
-  /** Drifting star field for 悬空空间 */
-  const stars = Array.from({ length: 48 }, (_, i) => ({
-    x: Math.random(),
-    y: Math.random(),
-    r: 0.6 + Math.random() * 2.2,
-    tw: Math.random() * Math.PI * 2,
-    spd: 0.015 + Math.random() * 0.04,
-    hue: Math.random() < 0.35 ? "pink" : Math.random() < 0.5 ? "lavender" : "white",
-  }));
+  /** Layered star field for 悬空空间 (far slow / mid / near faster). */
+  const stars = Array.from({ length: 72 }, (_, i) => {
+    const layer = i < 28 ? 0 : i < 52 ? 1 : 2; // 0 far, 2 near
+    const spdBase = layer === 0 ? 0.006 : layer === 1 ? 0.018 : 0.038;
+    return {
+      x: Math.random(),
+      y: Math.random(),
+      r: (layer === 0 ? 0.4 : layer === 1 ? 0.8 : 1.2) + Math.random() * (0.9 + layer * 0.7),
+      tw: Math.random() * Math.PI * 2,
+      spd: spdBase + Math.random() * spdBase * 0.6,
+      layer: layer,
+      hue: Math.random() < 0.35 ? "pink" : Math.random() < 0.5 ? "lavender" : "white",
+    };
+  });
 
   // --- Identity / leaderboard (Pages: localStorage; plug real WeChat later) ---
   function uid() {
@@ -973,18 +992,32 @@
 
   /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom).
    *  Tuned toward Subway Surfers: lower vanishing point, much wider near road. */
+  function roadHalfPair() {
+    if (mode === "space") {
+      return { far: ROAD_HALF_FAR_SPACE, near: ROAD_HALF_NEAR_SPACE };
+    }
+    return { far: ROAD_HALF_FAR, near: ROAD_HALF_NEAR };
+  }
+
+  function depthScale(z) {
+    // Space: stronger near/far (~1:3.5) for DEPTH item 2.
+    if (mode === "space") return (0.20 + 0.80 * z) * ROAD_SCALE * 1.06;
+    return (0.35 + 0.65 * z) * ROAD_SCALE;
+  }
+
   function project(lane, z, vw, vh) {
     const horizonY = vh * 0.14;
     const nearY = vh * 0.82;
     const y = horizonY + (nearY - horizonY) * z;
-    const roadHalfFar = vw * ROAD_HALF_FAR;
-    const roadHalfNear = vw * ROAD_HALF_NEAR;
+    const rh = roadHalfPair();
+    const roadHalfFar = vw * rh.far;
+    const roadHalfNear = vw * rh.near;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
     const cx = vw * 0.5 + curveDx(z, vw);
     const lx = LANE_X[lane];
     const offset = (lx - 0.5) * 2;
     const x = cx + offset * half;
-    const scale = (0.35 + 0.65 * z) * ROAD_SCALE;
+    const scale = depthScale(z);
     return { x, y, scale, half };
   }
 
@@ -992,8 +1025,9 @@
     const horizonY = vh * 0.14;
     const nearY = vh * 0.82;
     const y = horizonY + (nearY - horizonY) * z;
-    const roadHalfFar = vw * ROAD_HALF_FAR;
-    const roadHalfNear = vw * ROAD_HALF_NEAR;
+    const rh = roadHalfPair();
+    const roadHalfFar = vw * rh.far;
+    const roadHalfNear = vw * rh.near;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
     const cx = vw * 0.5 + curveDx(z, vw);
     return { y, left: cx - half, right: cx + half, half, cx };
@@ -1036,6 +1070,8 @@
     rewardAdT = 0;
     pendingHitObstacle = null;
     rewardToastT = 0;
+    rewardSkipStreak = 0;
+    nearMissCd = 0;
     rewardAdToken += 1;
     hideRewardedAd();
     hideRewardToast();
@@ -1070,6 +1106,8 @@
     rewardAdPhase = null;
     rewardAdT = 0;
     pendingHitObstacle = null;
+    rewardSkipStreak = 0;
+    nearMissCd = 0;
     rewardAdToken += 1;
     hideRewardedAd();
     hideRewardToast();
@@ -1625,8 +1663,13 @@
       rewardedAdCompleteBtn.disabled = true;
     }
     if (rewardedAdCountdown) rewardedAdCountdown.textContent = "2.0s";
+    if (rewardedAdTitle) rewardedAdTitle.textContent = "撞到了！";
     if (rewardedAdHint) {
-      rewardedAdHint.textContent = "看完即可越过障碍并继续跑";
+      rewardedAdHint.textContent = "撞到了！看完广告越过障碍";
+    }
+    if (rewardedAdSkipBtn) {
+      rewardedAdSkipBtn.textContent = "跳过";
+      rewardedAdSkipBtn.classList.remove("danger");
     }
   }
 
@@ -1660,6 +1703,27 @@
     }
   }
 
+  function setRewardedHitCopy(skippedOnce) {
+    if (rewardedAdTitle) rewardedAdTitle.textContent = "撞到了！";
+    if (skippedOnce) {
+      if (rewardedAdHint) {
+        rewardedAdHint.textContent = "再点「认栽结算」结束本局，或看完继续跑";
+      }
+      if (rewardedAdSkipBtn) {
+        rewardedAdSkipBtn.textContent = "认栽结算";
+        rewardedAdSkipBtn.classList.add("danger");
+      }
+    } else {
+      if (rewardedAdHint) {
+        rewardedAdHint.textContent = "撞到了！看完广告越过障碍";
+      }
+      if (rewardedAdSkipBtn) {
+        rewardedAdSkipBtn.textContent = "跳过";
+        rewardedAdSkipBtn.classList.remove("danger");
+      }
+    }
+  }
+
   /**
    * Mock rewarded ad for GitHub Pages.
    * Replace body when integrating 微信小游戏流量主 / TapTap Dirichlet:
@@ -1676,9 +1740,7 @@
       rewardedAdEl.classList.add("show-ad");
     }
     if (rewardedAdCompleteBtn) rewardedAdCompleteBtn._autoArmed = false;
-    if (rewardedAdHint) {
-      rewardedAdHint.textContent = "看完即可越过障碍并继续跑";
-    }
+    setRewardedHitCopy(false);
     syncRewardedAdUi();
 
     function complete() {
@@ -1829,18 +1891,36 @@
     hideRewardedAd();
     rewardAdPhase = null;
     rewardAdT = 0;
+    rewardSkipStreak = 0; // completed ad clears skip streak
     invulnT = Math.max(invulnT, REWARD_AD_INVULN);
     grantRewardAdProp();
     spawnFloatText(player.lane, 0.78, "继续跑", "#c4b5fd");
     syncInvulnUi();
   }
 
+  /** Skip path → settlement after N skips without completing an ad. */
+  function forceSettlementFromAd() {
+    hideRewardedAd();
+    rewardAdPhase = null;
+    rewardAdT = 0;
+    pendingHitObstacle = null;
+    rewardAdToken += 1;
+    showRewardToast("认栽结算");
+    gameOver();
+  }
+
   function onRewardedAdSkipped() {
-    // Stay paused; obstacle remains. Soft nudge only.
-    if (rewardedAdHint) {
-      rewardedAdHint.textContent = "需看完广告才能通过障碍";
+    // Stay paused; obstacle remains. First skip nudges; second forces #over.
+    rewardSkipStreak += 1;
+    if (rewardSkipStreak >= REWARD_SKIP_FORCE_OVER) {
+      forceSettlementFromAd();
+      return;
     }
-    showRewardToast("需看完才能通过");
+    setRewardedHitCopy(true);
+    if (rewardedAdHint) {
+      /* already set by setRewardedHitCopy */
+    }
+    showRewardToast("需看完才能通过 · 再点结算");
     // Keep rewardAdPhase = "watching"; do not clear pendingHitObstacle.
   }
 
@@ -1864,6 +1944,34 @@
       });
     }
     syncInvulnUi();
+  }
+
+  /** Adjacent-lane graze or same-lane lateral miss while displayLane lerps. */
+  function checkNearMiss() {
+    if (nearMissCd > 0 || dead || deathFx || isRewardedAdOpen()) return;
+    for (const e of entities) {
+      if (!e.alive || e.kind !== "obstacle" || e.nearMissed) continue;
+      if (e.z < GRAZE_Z_MIN || e.z > GRAZE_Z_MAX) continue;
+      const laneDiff = Math.abs(e.lane - player.lane);
+      const displayDiff = Math.abs(e.lane - player.displayLane);
+      // Adjacent lane fly-by, or same lane while still lerping across.
+      const adjacent = laneDiff === 1;
+      const lateralMiss =
+        laneDiff === 0 &&
+        displayDiff > 0.28 &&
+        Math.abs(player.lane - player.displayLane) > 0.22;
+      if (!adjacent && !lateralMiss) continue;
+      e.nearMissed = true;
+      nearMissCd = 0.55;
+      const tag = Math.random() < 0.5 ? "擦边!" : "勇敢!";
+      spawnFloatText(e.lane, Math.min(0.82, e.z), tag, "#fde68a");
+      coins += NEAR_MISS_COIN;
+      const pts = NEAR_MISS_COIN * 10;
+      showRewardToast(tag + " +" + pts);
+      burst(e.lane, e.z, "rgba(253,230,138,0.7)", 8);
+      updateHud();
+      return;
+    }
   }
 
   function gameOver() {
@@ -2110,6 +2218,7 @@
       rewardToastT -= dt;
       if (rewardToastT <= 0) hideRewardToast();
     }
+    if (nearMissCd > 0) nearMissCd = Math.max(0, nearMissCd - dt);
 
     for (const e of entities) {
       if (!e.alive) continue;
@@ -2144,6 +2253,8 @@
       ft.life -= dt;
     }
     floatTexts = floatTexts.filter((ft) => ft.life > 0);
+
+    checkNearMiss();
 
     for (const e of entities) {
       if (!e.alive) continue;
@@ -2358,31 +2469,38 @@
     ctx.arc(mx - mr * 0.15, my, mr * 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // drifting stars
+    // layered drifting stars (far slow → near fast; depth parallax)
     for (const s of stars) {
+      const layer = s.layer == null ? 1 : s.layer;
+      const parallaxX = (roadScroll * (0.0008 + layer * 0.0018)) % 1;
       const sy = ((s.y + animTime * s.spd) % 1.15) - 0.05;
-      const sx = ((s.x + Math.sin(animTime * 0.15 + s.tw) * 0.02) % 1 + 1) % 1;
-      if (sy < 0 || sy > 0.72) continue;
-      const twinkle = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(animTime * 3 + s.tw));
-      ctx.globalAlpha = twinkle;
+      const sx =
+        ((s.x + parallaxX + Math.sin(animTime * (0.08 + layer * 0.06) + s.tw) * (0.01 + layer * 0.012)) %
+          1 +
+          1) %
+        1;
+      if (sy < 0 || sy > 0.78) continue;
+      const depthA = layer === 0 ? 0.35 : layer === 1 ? 0.55 : 0.85;
+      const twinkle = depthA + 0.45 * (0.5 + 0.5 * Math.sin(animTime * (2 + layer) + s.tw));
+      ctx.globalAlpha = Math.min(1, twinkle);
       if (s.hue === "pink") ctx.fillStyle = "#ffb6d9";
       else if (s.hue === "lavender") ctx.fillStyle = "#d4b8ff";
       else ctx.fillStyle = "#fff8ff";
       const px = sx * vw;
-      const py = sy * vh;
+      const py = sy * vh * (0.55 + layer * 0.08);
+      const rr = s.r * (0.7 + layer * 0.35);
       ctx.beginPath();
-      ctx.arc(px, py, s.r, 0, Math.PI * 2);
+      ctx.arc(px, py, rr, 0, Math.PI * 2);
       ctx.fill();
-      // tiny sparkle cross for larger stars
-      if (s.r > 1.6) {
+      if (rr > 1.5) {
         ctx.strokeStyle = ctx.fillStyle;
         ctx.lineWidth = 1;
-        ctx.globalAlpha = twinkle * 0.7;
+        ctx.globalAlpha = twinkle * 0.65;
         ctx.beginPath();
-        ctx.moveTo(px - s.r * 2.2, py);
-        ctx.lineTo(px + s.r * 2.2, py);
-        ctx.moveTo(px, py - s.r * 2.2);
-        ctx.lineTo(px, py + s.r * 2.2);
+        ctx.moveTo(px - rr * 2.2, py);
+        ctx.lineTo(px + rr * 2.2, py);
+        ctx.moveTo(px, py - rr * 2.2);
+        ctx.lineTo(px, py + rr * 2.2);
         ctx.stroke();
       }
     }
@@ -2527,78 +2645,107 @@
     const far = roadEdges(0, vw, vh);
     const near = roadEdges(1, vw, vh);
 
+    // void shoulders (pinched far → wide near = corridor taper)
     const voidG = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
-    voidG.addColorStop(0, "rgba(40,20,80,0.45)");
-    voidG.addColorStop(1, "rgba(120,60,140,0.65)");
+    voidG.addColorStop(0, "rgba(28,12,60,0.55)");
+    voidG.addColorStop(0.45, "rgba(70,35,110,0.55)");
+    voidG.addColorStop(1, "rgba(140,70,150,0.72)");
     ctx.fillStyle = voidG;
     ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
 
-    // floating platform slabs along depth
-    for (let i = 0; i < 7; i++) {
-      const z = ((i / 7) + (roadScroll / 480) % 1) % 1;
+    // far nebula haze band (almost static — depth item 3 far-slow)
+    ctx.globalAlpha = 0.22;
+    const haze = ctx.createRadialGradient(vw * 0.5, far.y, 0, vw * 0.5, far.y, vw * 0.42);
+    haze.addColorStop(0, "rgba(255,200,240,0.5)");
+    haze.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, far.y - 20, vw, 80);
+    ctx.globalAlpha = 1;
+
+    // floating platform slabs along depth (stronger size-by-z)
+    for (let i = 0; i < 9; i++) {
+      const z = ((i / 9) + (roadScroll / 420) % 1) % 1;
       const e = roadEdges(z, vw, vh);
-      const pad = 6 + 10 * z;
-      ctx.globalAlpha = 0.18 + 0.35 * z;
+      const pad = 4 + 14 * z;
+      ctx.globalAlpha = 0.12 + 0.48 * z;
       const pg = ctx.createLinearGradient(e.left, e.y - 8, e.right, e.y + 8);
       pg.addColorStop(0, "rgba(200,160,255,0.5)");
-      pg.addColorStop(0.5, "rgba(255,200,240,0.65)");
+      pg.addColorStop(0.5, "rgba(255,200,240,0.72)");
       pg.addColorStop(1, "rgba(180,140,255,0.5)");
       ctx.fillStyle = pg;
+      const slabH = 4 + 16 * z;
       ctx.beginPath();
-      roundRect(ctx, e.left + pad, e.y - 6 * z - 2, e.right - e.left - pad * 2, 10 + 8 * z, 4 + 4 * z);
+      roundRect(ctx, e.left + pad, e.y - slabH * 0.55, e.right - e.left - pad * 2, slabH, 3 + 5 * z);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.35)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,255,255," + (0.2 + 0.35 * z) + ")";
+      ctx.lineWidth = 1 + z;
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
 
-    // main glassy ribbon
+    // main glassy ribbon — multi-seg for clean taper
     ctx.beginPath();
-    ctx.moveTo(far.left, far.y);
-    ctx.lineTo(far.right, far.y);
-    ctx.lineTo(near.right, near.y);
-    ctx.lineTo(near.left, near.y);
+    for (let z = 0; z <= 1.001; z += 0.04) {
+      const e = roadEdges(Math.min(1, z), vw, vh);
+      if (z === 0) ctx.moveTo(e.left, e.y);
+      else ctx.lineTo(e.left, e.y);
+    }
+    for (let z = 1; z >= -0.001; z -= 0.04) {
+      const e = roadEdges(Math.max(0, z), vw, vh);
+      ctx.lineTo(e.right, e.y);
+    }
     ctx.closePath();
     const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
-    rg.addColorStop(0, "rgba(230,200,255,0.22)");
-    rg.addColorStop(0.5, "rgba(255,190,230,0.4)");
-    rg.addColorStop(1, "rgba(255,220,245,0.58)");
+    rg.addColorStop(0, "rgba(230,200,255,0.18)");
+    rg.addColorStop(0.45, "rgba(255,190,230,0.42)");
+    rg.addColorStop(1, "rgba(255,220,245,0.62)");
     ctx.fillStyle = rg;
     ctx.fill();
 
-    drawTrackGrooves(vw, vh, "rgba(180,120,220,0.22)", 5);
+    drawTrackGrooves(vw, vh, "rgba(180,120,220,0.28)", 6);
 
-    // neon edge rails
+    // neon edge rails (thicker near)
     for (let side = 0; side < 2; side++) {
       ctx.beginPath();
-      for (let z = 0; z <= 1; z += 0.035) {
+      for (let z = 0; z <= 1; z += 0.03) {
         const e = roadEdges(z, vw, vh);
         const x = side === 0 ? e.left : e.right;
         if (z === 0) ctx.moveTo(x, e.y);
         else ctx.lineTo(x, e.y);
       }
-      ctx.strokeStyle = side === 0 ? "rgba(244,114,182,0.85)" : "rgba(192,132,252,0.85)";
-      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = side === 0 ? "rgba(244,114,182,0.9)" : "rgba(192,132,252,0.9)";
+      ctx.lineWidth = 2.5;
       ctx.shadowColor = side === 0 ? "#f472b6" : "#c084fc";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 14;
       ctx.stroke();
       ctx.shadowBlur = 0;
+      // inner bright rail
+      ctx.beginPath();
+      for (let z = 0; z <= 1; z += 0.05) {
+        const e = roadEdges(z, vw, vh);
+        const inset = 3 + 10 * z;
+        const x = side === 0 ? e.left + inset : e.right - inset;
+        if (z === 0) ctx.moveTo(x, e.y);
+        else ctx.lineTo(x, e.y);
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
     }
 
-    // lane sparkle dashes
+    // lane sparkle dashes rushing to feet (item 5)
     ctx.lineCap = "round";
     for (let lane = 0; lane < 2; lane++) {
-      const dashPeriod = 0.095;
-      const offset = (roadScroll / 170) % dashPeriod;
+      const dashPeriod = 0.085;
+      const offset = (roadScroll / 145) % dashPeriod;
       let drawing = false;
-      ctx.strokeStyle = "rgba(255,210,245,0.85)";
-      ctx.lineWidth = 2.2;
-      for (let z = 0; z <= 1; z += 0.016) {
+      ctx.strokeStyle = "rgba(255,210,245,0.9)";
+      for (let z = 0; z <= 1; z += 0.014) {
         const e = roadEdges(z, vw, vh);
         const x = e.left + (e.right - e.left) * ((lane + 1) / 3);
         const phase = (z + offset) % dashPeriod;
-        const on = phase < dashPeriod * 0.38;
+        const on = phase < dashPeriod * 0.4;
+        ctx.lineWidth = 1.2 + 2.2 * z;
         if (on) {
           if (!drawing) {
             ctx.beginPath();
@@ -2614,35 +2761,39 @@
     }
 
     // floating rune lights / petals
-    for (let i = 0; i < 14; i++) {
-      const z = ((i / 14) + (roadScroll / 860) % 1) % 1;
+    for (let i = 0; i < 16; i++) {
+      const z = ((i / 16) + (roadScroll / 720) % 1) % 1;
       const e = roadEdges(z, vw, vh);
-      const lx = e.left + (e.right - e.left) * (0.12 + (i % 4) * 0.25);
+      const lx = e.left + (e.right - e.left) * (0.1 + (i % 5) * 0.2);
       const pulse = 0.5 + 0.5 * Math.sin(animTime * 4 + i);
-      ctx.globalAlpha = (0.2 + 0.4 * z) * pulse;
+      ctx.globalAlpha = (0.15 + 0.55 * z) * pulse;
       ctx.fillStyle = i % 3 === 0 ? "#ffd0ec" : i % 3 === 1 ? "#e0c4ff" : "#fff";
       ctx.beginPath();
-      ctx.arc(lx, e.y - 4 * z, 2 + 4 * z, 0, Math.PI * 2);
+      ctx.arc(lx, e.y - 6 * z, 1.5 + 5.5 * z, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // side floating crystals as decor
-    for (let i = 0; i < 5; i++) {
-      const z = ((i / 5) + (roadScroll / 1100) % 1) % 1;
+    // side floating crystals — rush past (item 4); size ratio ~1:3.5
+    for (let i = 0; i < 8; i++) {
+      const z = ((i / 8) + (roadScroll / 780) % 1) % 1;
+      if (z < 0.03 || z > 0.97) continue;
       const e = roadEdges(z, vw, vh);
-      const sc = 0.35 + z * 0.8;
+      const sc = 0.22 + z * 1.15; // stronger near blow-up
       const side = i % 2 === 0 ? -1 : 1;
-      const x = side < 0 ? e.left - 26 * sc : e.right + 26 * sc;
-      ctx.globalAlpha = 0.35 + 0.4 * z;
-      ctx.fillStyle = "#e9d5ff";
+      const x = side < 0 ? e.left - (18 + 22 * z) * sc : e.right + (18 + 22 * z) * sc;
+      ctx.globalAlpha = 0.28 + 0.55 * z;
+      ctx.fillStyle = i % 3 === 0 ? "#e9d5ff" : i % 3 === 1 ? "#fbcfe8" : "#ddd6fe";
       ctx.beginPath();
-      ctx.moveTo(x, e.y - 28 * sc);
-      ctx.lineTo(x + 8 * sc, e.y - 10 * sc);
+      ctx.moveTo(x, e.y - 36 * sc);
+      ctx.lineTo(x + 10 * sc, e.y - 12 * sc);
       ctx.lineTo(x, e.y);
-      ctx.lineTo(x - 8 * sc, e.y - 10 * sc);
+      ctx.lineTo(x - 10 * sc, e.y - 12 * sc);
       ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 1 + z;
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }

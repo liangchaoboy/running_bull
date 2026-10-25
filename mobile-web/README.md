@@ -85,7 +85,7 @@ XBuilder 发布页（`x.qiniu.com`）**不适合手机微信**。本目录需自
 - ads.txt：`mobile-web/ads.txt`（发布商行注释占位；正式需真实 pub + 最好用户站根 ads.txt）
 - 抽奖文案已标 **示意 / 非赌博**
 
-试玩：https://liangchaoboy.github.io/running_bull/mobile-web/?v=adsense1
+试玩：https://liangchaoboy.github.io/running_bull/mobile-web/?v=feel1
 
 ## 与 XBuilder 版关系
 
