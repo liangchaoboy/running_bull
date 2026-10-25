@@ -24,8 +24,13 @@
   const LANES = 3;
   const LANE_X = [0.22, 0.5, 0.78];
   const BOMB_COOLDOWN = 1.6;
-  const JUMP_DURATION = 0.55;
-  const JUMP_HEIGHT = 90;
+  /** Longer than hit-zone dwell at start speed so a well-timed jump clears. */
+  const JUMP_DURATION = 0.82;
+  const JUMP_HEIGHT = 125;
+  const JUMP_BUFFER = 0.14;
+  const JUMP_LAND_GRACE = 0.12;
+  const HIT_Z_MIN = 0.68;
+  const HIT_Z_MAX = 0.84;
 
   /** @type {"earth"|"space"} */
   let mode = "earth";
@@ -50,6 +55,8 @@
     displayLane: 1,
     jumpT: 0,
     jumping: false,
+    jumpBuffered: 0,
+    landGrace: 0,
   };
 
   /** @type {Array<{lane:number,z:number,kind:string,alive:boolean}>} */
@@ -142,6 +149,8 @@
     player.displayLane = 1;
     player.jumpT = 0;
     player.jumping = false;
+    player.jumpBuffered = 0;
+    player.landGrace = 0;
     entities = [];
     bombs = [];
     particles = [];
@@ -176,9 +185,21 @@
 
   function jump() {
     if (!running || dead) return;
-    if (player.jumping) return;
+    if (player.jumping) {
+      // Queue a follow-up if pressed near landing.
+      if (player.jumpT >= JUMP_DURATION - JUMP_BUFFER) {
+        player.jumpBuffered = JUMP_BUFFER;
+      }
+      return;
+    }
     player.jumping = true;
     player.jumpT = 0;
+    player.jumpBuffered = 0;
+    player.landGrace = 0;
+  }
+
+  function isJumpClearing() {
+    return player.jumping || player.landGrace > 0;
   }
 
   function fireBomb() {
@@ -259,12 +280,27 @@
 
     player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * 14);
 
+    if (player.jumpBuffered > 0) player.jumpBuffered -= dt;
+    if (player.landGrace > 0) player.landGrace -= dt;
+
     if (player.jumping) {
       player.jumpT += dt;
       if (player.jumpT >= JUMP_DURATION) {
         player.jumping = false;
         player.jumpT = 0;
+        player.landGrace = JUMP_LAND_GRACE;
+        if (player.jumpBuffered > 0) {
+          player.jumping = true;
+          player.jumpT = 0;
+          player.jumpBuffered = 0;
+          player.landGrace = 0;
+        }
       }
+    } else if (player.jumpBuffered > 0) {
+      player.jumping = true;
+      player.jumpT = 0;
+      player.jumpBuffered = 0;
+      player.landGrace = 0;
     }
 
     if (bombCd > 0) {
@@ -297,14 +333,14 @@
 
     for (const e of entities) {
       if (!e.alive) continue;
-      if (e.z < 0.62 || e.z > 0.88) continue;
+      if (e.z < HIT_Z_MIN || e.z > HIT_Z_MAX) continue;
       if (e.lane !== player.lane) continue;
       if (e.kind === "coin") {
         e.alive = false;
         coins += 1;
         burst(e.lane, e.z, mode === "space" ? "#ffc0ef" : "#ffd700");
       } else if (e.kind === "obstacle") {
-        if (!player.jumping) {
+        if (!isJumpClearing()) {
           gameOver();
           return;
         }
