@@ -579,7 +579,7 @@
     if (modeHint) {
       modeHint.textContent =
         mode === "plant"
-          ? "已选植物跑酷 · 点「开始跑」；🍒=清道10秒"
+          ? "已选植物跑酷 · 点「开始植物跑酷」或再点🌻开跑；🍒=清道10秒"
           : "选地图 · 点下方卡片（手机无需键盘）";
     }
     if (btnStart) {
@@ -3375,16 +3375,51 @@
   bindPress(btnBomb, fireBomb);
   bindPress(btnInvuln, activateInvuln);
 
+  /** Pick a mode card. Re-tapping already-selected plant starts the run (phone-friendly). */
+  let lastModePickAt = 0;
+  function onModeCardPick(modeId) {
+    if (!modeId) return;
+    const now = performance.now();
+    // Suppress duplicate click that follows pointerdown on the same gesture.
+    if (now - lastModePickAt < 320) return;
+    lastModePickAt = now;
+    if (modeId === "plant" && mode === "plant") {
+      resetGame();
+      return;
+    }
+    setMode(modeId);
+  }
+
   if (modePick) {
-    modePick.addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".mode-card");
-      if (!btn) return;
-      setMode(btn.getAttribute("data-mode"));
+    modePick.querySelectorAll(".mode-card").forEach((btn) => {
+      const handler = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        onModeCardPick(btn.getAttribute("data-mode"));
+      };
+      // WeChat WebView + nested scroll often eats `click`; match lane buttons with pointerdown.
+      btn.addEventListener("pointerdown", handler, { passive: false });
+      btn.addEventListener("click", handler);
     });
   }
 
-  btnStart.addEventListener("click", resetGame);
-  btnRetry.addEventListener("click", resetGame);
+  let lastStartAt = 0;
+  function startOnce() {
+    const now = performance.now();
+    if (now - lastStartAt < 400) return;
+    lastStartAt = now;
+    resetGame();
+  }
+  bindPress(btnStart, startOnce);
+  bindPress(btnRetry, startOnce);
+  btnStart.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    startOnce();
+  });
+  btnRetry.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    startOnce();
+  });
   if (btnChangeMode) {
     btnChangeMode.addEventListener("click", showTitle);
   }

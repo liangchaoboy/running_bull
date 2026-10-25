@@ -354,6 +354,11 @@ html, body {
   align-items: center;
   gap: 4px;
   transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(101, 163, 13, 0.25);
 }
 
 .mode-card:active {
@@ -847,8 +852,13 @@ html, body {
 
 #btn-start,
 #btn-retry {
-  position: relative;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
   overflow: hidden;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(26, 111, 212, 0.25);
 }
 
 
@@ -943,6 +953,8 @@ html, body {
   letter-spacing: 0.04em;
   line-height: 1.3;
   box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  pointer-events: none;
+  z-index: 1;
 }
 .mode-card.plant.selected {
   border-color: #65a30d;
