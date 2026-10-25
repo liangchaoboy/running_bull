@@ -1261,9 +1261,8 @@
     if (!running || dead || swipeUsed) return false;
     if (Math.abs(dx) >= SWIPE_AXIS_MIN && Math.abs(dx) > Math.abs(dy) * 0.85) {
       changeLane(dx > 0 ? 1 : -1);
-      // Allow another lane change after finger travels further (chained swipe).
-      swipeOriginX += dx;
-      swipeOriginY += dy;
+      // One gesture → one lane change; lock until pointerup (avoids double-lane swipe).
+      swipeUsed = true;
       touchStartT = 0; // consumed — no tap-jump on release
       return "lane";
     }

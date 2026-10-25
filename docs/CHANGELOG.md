@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-25（换道：一滑只一道）
+
+- 修「滑动一下子滑了两个赛道」：`pointermove` 仍即时换道，但同一手势换道后锁到抬手，不再连滑两道。阈值仍约 18px。
+
+
+
 ## 2026-10-25（触控手感 + 微信登录 / 排行 / Top3 奖金）
 
 - **换道更跟手**：滑动阈值 40→18px；`pointermove` 即时换道（可连滑）；`LANE_SNAP` 0.58 + `LANE_LERP` 30；触控 `passive:false` + `preventDefault`。
