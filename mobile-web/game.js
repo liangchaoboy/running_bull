@@ -1066,7 +1066,17 @@
     const roadHalfNear = vw * rh.near;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
     const cx = vw * 0.5 + curveDx(z, vw);
-    const lx = LANE_X[lane];
+    // Fractional displayLane must lerp — LANE_X[1.01] is undefined → NaN (plane vanish on lane change).
+    let lx;
+    if (typeof lane === "number" && lane !== (lane | 0) && isFinite(lane)) {
+      const lane0 = Math.max(0, Math.min(LANES - 1, Math.floor(lane)));
+      const lane1 = Math.min(LANES - 1, lane0 + 1);
+      const frac = Math.max(0, Math.min(1, lane - lane0));
+      lx = LANE_X[lane0] + (LANE_X[lane1] - LANE_X[lane0]) * frac;
+    } else {
+      const li = Math.max(0, Math.min(LANES - 1, lane | 0));
+      lx = LANE_X[li];
+    }
     const offset = (lx - 0.5) * 2;
     const x = cx + offset * half;
     const scale = depthScale(z);
@@ -4330,32 +4340,51 @@
    *  Used in all modes (earth/forest/space/chill/plant) when char assets load.
    *  Synced to XB: lock rotation, bob~10 on plant, size pulse 1.04/0.99. */
   function drawPlayerPlane(vw, vh) {
-    const lane = player.displayLane;
+    // Always interpolate like drawPlayer — never pass raw displayLane into LANE_X[].
+    const laneF = Number.isFinite(player.displayLane) ? player.displayLane : player.lane;
+    const lane0 = Math.max(0, Math.min(LANES - 1, Math.floor(laneF)));
+    const lane1 = Math.min(LANES - 1, lane0 + 1);
+    const frac = Math.max(0, Math.min(1, laneF - lane0));
     const z = 0.78;
-    const p = project(lane, z, vw, vh);
-    let py = p.y;
+    const a = project(lane0, z, vw, vh);
+    const b = project(lane1, z, vw, vh);
+    const px = a.x + (b.x - a.x) * frac;
+    let py = a.y + (b.y - a.y) * frac;
+    const baseScale = a.scale + (b.scale - a.scale) * frac;
     if (player.jumping) {
-      const t = player.jumpT / JUMP_DURATION;
-      const arc = Math.sin(Math.PI * Math.min(1, t));
-      py -= JUMP_HEIGHT * arc * p.scale * 0.85;
+      const jt = player.jumpT / JUMP_DURATION;
+      const arc = Math.sin(Math.PI * Math.min(1, jt));
+      py -= JUMP_HEIGHT * arc * baseScale * 0.85;
     }
-    if (player.sliding) py += 10 * p.scale;
-    const scale = p.scale * 1.15;
+    if (player.sliding) py += 10 * baseScale;
+    const scale = baseScale * 1.25;
     const img = planeImgs.fighter;
-    const size = 64 * scale;
-    drawGroundShadow({ x: p.x, y: p.y, scale: p.scale }, size * 0.4, size * 0.12);
+    const size = 72 * scale;
+    drawGroundShadow({ x: px, y: a.y + (b.y - a.y) * frac, scale: baseScale }, size * 0.4, size * 0.12);
     const bob = Math.sin(runPhase * 2) * 3 * scale;
+    // Invuln aura under fighter (does not leave globalAlpha dirty)
+    if (isInvulnerable()) {
+      const pulse = 0.65 + 0.35 * Math.sin(animTime * 10);
+      const ag = ctx.createRadialGradient(px, py - 16 * scale, 4, px, py - 8 * scale, 40 * scale);
+      ag.addColorStop(0, "rgba(255,240,150," + 0.5 * pulse + ")");
+      ag.addColorStop(1, "rgba(255,200,60,0)");
+      ctx.fillStyle = ag;
+      ctx.beginPath();
+      ctx.arc(px, py - 10 * scale, 38 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.save();
-    ctx.translate(p.x, py - bob);
-    const lean = (player.lane - player.displayLane) * 0.35;
+    ctx.globalAlpha = 1;
+    ctx.translate(px, py - bob);
+    const lean = (player.lane - laneF) * 0.35;
     ctx.rotate(lean);
-    if (img && img.complete && img.naturalWidth) {
+    // Emoji underlay so fighter never "vanishes" if PNG late/fail
+    ctx.font = Math.round(size * 0.75) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("✈️", 0, -size * 0.35);
+    if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, -size * 0.5, -size * 0.85, size, size);
-    } else {
-      ctx.font = Math.round(size * 0.85) + "px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("✈️", 0, -size * 0.3);
     }
     // muzzle flash
     if (planeAutoFire && running) {
@@ -4369,9 +4398,10 @@
     }
     ctx.restore();
     // tiny hero badge
+    ctx.globalAlpha = 1;
     ctx.font = Math.round(14 * scale) + "px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(heroKind === "deer" ? "🦌" : heroKind === "dog" ? "🐕" : "🐂", p.x, py + 8 * scale);
+    ctx.fillText(heroKind === "deer" ? "🦌" : heroKind === "dog" ? "🐕" : "🐂", px, py + 8 * scale);
   }
 
   function drawPlayerRear(x, py, scale, stretch) {

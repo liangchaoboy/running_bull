@@ -26,7 +26,7 @@ onCloned data => {
 	}
 	setSize 0.32
 	setXpos laneX + curveBend*0.2
-	setYpos heroFeet + 28
+	setYpos heroFeet + 42
 	show
 	forever => {
 		if !running || over || mapId != 7 {
@@ -35,7 +35,7 @@ onCloned data => {
 		life = life - 0.02
 		changeYpos 9
 		setXpos xpos + (laneX+curveBend*0.2-xpos)*0.35
-		if touching("PlaneEnemy") || touching("障碍") || touching("Obstacle") {
+		if touching("PlaneEnemy") {
 			broadcast "planedmg"
 			die
 		}

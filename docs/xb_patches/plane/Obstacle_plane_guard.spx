@@ -1,0 +1,70 @@
+var (
+	isClone bool
+	grazed  bool
+	dx      float64
+	topY    float64
+)
+
+onStart => {
+	hide
+	setSize 0.4
+	setXpos 520
+	setYpos -70
+}
+
+onClick => {
+	if running {
+		broadcast "jump"
+	}
+}
+
+onMsg "spawn", => {
+	// plane mapId7 uses PlaneEnemy only — side-scroller Obstacle must not spawn/cover hero
+	if !isClone && running && spawnKind < 2 && mapId != 7 {
+		clone
+	}
+}
+
+onCloned data => {
+	isClone = true
+	grazed = false
+	setSize 0.4
+	setXpos 250
+	setYpos -70
+	show
+	forever => {
+		if running {
+			changeXpos -runSpeed
+			dx = xpos - bullX
+			if dx < 0 {
+				dx = -dx
+			}
+			topY = ypos + 17.5
+			if dx < 32 {
+				if heroFeet > topY-8 {
+					if !grazed {
+						grazed = true
+						brave = brave + 1
+						broadcast "graze"
+					}
+				} else {
+					broadcast "hit"
+				}
+			}
+			if xpos < -420 {
+				die
+			}
+		}
+		wait 0.02
+	}
+}
+
+onMsg "reset", => {
+	if isClone {
+		die
+	} else {
+		hide
+		setXpos 520
+		setYpos -70
+	}
+}

@@ -1,3 +1,10 @@
+## 2026-10-25 · plane2（飞机显示消失修复）
+
+- **根因（web）**：`project`/`drawPlayerPlane` 用小数 `displayLane` 索引 `LANE_X` → `NaN`，换道后机体不画。
+- **根因（XB）**：开跑切 `跑1–4`/`跳`，缺帧则空白；旧 Obstacle 仍可能在 mapId7 spawn。
+- 修复：web 分数道插值 + ✈️ 底图；XB 英雄 mapId7 锁 `默认`+`show`；Obstacle 跳过 mapId7；PlaneBullet 抬起点。
+- 粘贴：`docs/xb_patches/plane/APPLY_PLANE_FIX.md`（**待 Publish**）；Pages `?v=plane2`。
+
 ## 2026-10-25 · plane1（飞机大战跑酷 ✈️）
 
 - 新模式 **飞机大战**（mapId **7** / 键 **0** / web `plane`）：默认连续扫射；小怪 HP3、大怪 HP10；导弹 -5；航路弯道。

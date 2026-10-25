@@ -1,0 +1,361 @@
+import "fmt"
+
+var (
+	id       float64 = 1
+	menuX    float64 = -160
+	playSize float64 = 0.38
+	footK    float64 = 0
+	vy       float64
+	groundY  float64
+	footDrop float64
+	coyote   float64
+	jumpLock float64
+	jumpBuf  float64
+	holdT    float64
+	sawHold  bool
+	runAnim  bool
+	mapName  string
+	lane     float64 = 1
+	wasL     bool
+	wasR     bool
+	leftNow  bool
+	rightNow bool
+	tx       float64
+	runFrame float64
+	bob      float64
+)
+
+onStart => {
+	setRotationStyle None
+	setSize playSize
+	hide
+	setXpos 900
+	setYpos 0
+	forever => {
+		if inMenu {
+			runAnim = false
+			setRotationStyle None
+			setHeading 90
+			setCostume "默认"
+			show
+			setXpos menuX
+			if hero == id {
+				setSize playSize * 1.12
+			} else {
+				setSize playSize * 0.82
+			}
+			footDrop = footK * size
+			setYpos feetY + footDrop
+		} else if hero == id {
+			show
+			if size != playSize {
+				setSize playSize
+			}
+			footDrop = footK * playSize
+			groundY = feetY + footDrop
+			if running {
+				if !bullGrounded {
+					vy = vy - 1.28
+					if holdT > 0 && vy > 0 {
+						if keyPressed(KeySpace) {
+							sawHold = true
+							vy = vy + 0.06
+							if vy > 12.4 {
+								vy = 12.4
+							}
+						} else if sawHold && vy > 7 {
+							vy = 6
+							holdT = 0
+						}
+						if holdT > 0 {
+							holdT = holdT - 0.02
+						}
+					}
+					changeYpos vy
+					if ypos <= groundY {
+						setYpos groundY
+						vy = 0
+						bullGrounded = true
+						coyote = 0.08
+						jumpLock = 0
+						holdT = 0
+					} else if coyote > 0 {
+						coyote = coyote - 0.02
+					}
+				} else {
+					if ypos != groundY {
+						setYpos groundY
+					}
+					vy = 0
+					coyote = 0.08
+				}
+				if inputLock <= 0 && jumpLock <= 0 && (jumpBuf > 0 || keyPressed(KeySpace)) && (bullGrounded || coyote > 0) {
+					jumpBuf = 0
+					jumpLock = 0.12
+					bullGrounded = false
+					coyote = 0
+					vy = 12
+					holdT = 0.1
+					sawHold = false
+					setYpos groundY + 12
+				}
+				if jumpLock > 0 {
+					jumpLock = jumpLock - 0.02
+				}
+				if jumpBuf > 0 {
+					jumpBuf = jumpBuf - 0.02
+				}
+				leftNow = false
+				rightNow = false
+				if inputLock <= 0 {
+					leftNow = false
+					rightNow = false
+					if mousePressed {
+						if mouseX < xpos-30 {
+							leftNow = true
+						} else if mouseX > xpos+30 {
+							rightNow = true
+						}
+					}
+					if leftNow && !wasL {
+						lane = lane - 1
+					}
+					if rightNow && !wasR {
+						lane = lane + 1
+					}
+				}
+				wasL = leftNow
+				wasR = rightNow
+				if lane < 0 {
+					lane = 0
+				}
+				if lane > 2 {
+					lane = 2
+				}
+				tx = 0
+				if lane < 0.5 {
+					tx = -96
+				}
+				if lane > 1.5 {
+					tx = 96
+				}
+				laneHome = tx
+tx = tx + curveBend*0.25
+				if xpos < tx-6 || xpos > tx+6 {
+					setXpos xpos + (tx-xpos)*0.88
+				} else {
+					setXpos tx
+				}
+				heroFeet = ypos - footDrop
+				bullX = xpos
+				bullY = ypos
+				// Locked rear facing: no torso lean/rotate (avoids paper-flip).
+				// Lane change is xpos-only above; costumes already rear-¾.
+				setRotationStyle None
+				setHeading 90
+				// plane mapId7: lock known costume "默认" (never blank 跑*/跳 if fighter-only pack);
+				// always show — fixes "飞机显示后消失" when run-cycle switched to missing costumes.
+				if mapId == 7 {
+					show
+					setCostume "默认"
+					runFrame = runFrame + 0.28 + runSpeed*0.006
+					if runFrame >= 4 {
+						runFrame = runFrame - 4
+					}
+					bob = 0
+					if bullGrounded {
+						if runFrame < 1 {
+							bob = 8
+							setSize playSize * 1.18
+						} else if runFrame < 2 {
+							bob = 0
+							setSize playSize * 1.12
+						} else if runFrame < 3 {
+							bob = 8
+							setSize playSize * 1.18
+						} else {
+							bob = 2
+							setSize playSize * 1.12
+						}
+						setYpos groundY + bob
+					} else {
+						setSize playSize * 1.15
+					}
+				} else if bullGrounded {
+					runFrame = runFrame + 0.36 + runSpeed*0.008
+					if runFrame >= 4 {
+						runFrame = runFrame - 4
+					}
+					bob = 0
+					// Mild size pulse on foot-plant only (contact squash, not flip)
+					if runFrame < 1 {
+						setCostume "跑1"
+						bob = 10
+						setSize playSize * 1.04
+					} else if runFrame < 2 {
+						setCostume "跑2"
+						bob = 0
+						setSize playSize * 0.99
+					} else if runFrame < 3 {
+						setCostume "跑3"
+						bob = 10
+						setSize playSize * 1.04
+					} else {
+						setCostume "跑4"
+						bob = 2
+						setSize playSize * 0.99
+					}
+					setYpos groundY + bob
+				} else {
+					setCostume "跳"
+					setSize playSize
+				}
+				if invulnT > 0 {
+					setGraphicEffect BrightnessEffect, 60
+				} else {
+					clearGraphicEffects
+				}
+				if showBrave > 0 {
+					showBrave = 0
+					say "擦边!", 0.55
+				}
+			}
+		} else {
+			hide
+			setRotationStyle None
+			setHeading 90
+			setXpos 900
+		}
+		wait 0.02
+	}
+}
+
+onClick => {
+	if inMenu {
+		if hero == id {
+			broadcast "boot"
+		} else {
+			hero = id
+			broadcast "showmenu"
+		}
+	} else if over && hero == id {
+		broadcast "menu"
+	} else if running && hero == id {
+		broadcast "jump"
+	}
+}
+
+onMsg "jump", => {
+	if inputLock <= 0 && hero == id && running && !over {
+		jumpBuf = 0.12
+	}
+}
+
+onMsg "reset", => {
+	vy = 0
+	bullGrounded = true
+	coyote = 0.08
+	jumpLock = 0
+	jumpBuf = 0
+	holdT = 0
+	sawHold = false
+	runAnim = false
+	setRotationStyle None
+	setHeading 90
+	say ""
+	setCostume "默认"
+	if hero == id {
+		setSize playSize
+		footDrop = footK * playSize
+		groundY = feetY + footDrop
+		lane = 1
+		wasL = false
+		wasR = false
+		setXpos 0
+		setYpos groundY
+		show
+		bullX = xpos
+		bullY = ypos
+		heroFeet = ypos - footDrop
+	} else {
+		hide
+		setXpos 900
+	}
+}
+
+onMsg "graze", => {
+	if hero == id {
+		showBrave = 1
+		if (int(brave)%2) == 0 {
+			say "勇敢!", 0.55
+		} else {
+			say "擦边!", 0.55
+		}
+	}
+}
+
+onMsg "showmenu", => {
+	if !inMenu || hero != id {
+		say ""
+	} else {
+		if mapId == 2 {
+			mapName = "夜晚"
+		} else if mapId == 3 {
+			mapName = "森林"
+		} else if mapId == 5 {
+			mapName = "慢慢跑酷"
+		} else if mapId == 4 {
+			mapName = "悬空空间"
+		} else if mapId == 6 {
+			mapName = "植物跑酷"
+		} else if mapId == 7 {
+			mapName = "飞机大战"
+		} else {
+			mapName = "白天"
+		}
+		say fmt.Sprintf("%s\n1牛2鹿3狗 4白5夜6林7空8慢慢9植物0飞机\n飞机默认扫射 B导弹", mapName), 30
+	}
+}
+
+onMsg "gameover", => {
+	runAnim = false
+	setRotationStyle None
+	setHeading 90
+	setCostume "默认"
+	if hero == id {
+		if mapId == 5 {
+			say fmt.Sprintf("存活 %.0f 秒\n金币 %.0f  时长积分 %.0f\n空格重新选择", playTimeSec, coins, score), 40
+		} else if mapId == 6 {
+			say fmt.Sprintf("距离 %.0f  勇敢 %.0f\n阳光 %.0f  得分 %.0f\n空格重新选择", distance, brave, coins, score), 40
+		} else {
+			say fmt.Sprintf("距离 %.0f  勇敢 %.0f\n金币 %.0f  得分 %.0f\n空格重新选择", distance, brave, coins, score), 40
+		}
+	}
+}
+
+onMsg "boot", => {
+	say ""
+}
+onMsg "laneLeft", => {
+	if hero == id && running && !over {
+		lane = lane - 1
+		if lane < 0 {
+			lane = 0
+		}
+	}
+}
+
+onMsg "laneRight", => {
+	if hero == id && running && !over {
+		lane = lane + 1
+		if lane > 2 {
+			lane = 2
+		}
+	}
+}
+
+onMsg "oracle", => {
+	if hero == id && running {
+		say fmt.Sprintf("「答案之书」\n%s", answerLine), 1.6
+	}
+}

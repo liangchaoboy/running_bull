@@ -1,7 +1,7 @@
 # XBuilder 对齐笔记：飞机大战跑酷 ✈️
 
-> **顺序**：先在 XBuilder 粘贴本包并 **Publish** 同链 → 再硬刷 mobile-web `?v=plane1`。  
-> 粘贴总览：``docs/xb_patches/plane/APPLY_PLANE.md`（工作区镜像 `/workspace/xb_src/patches/plane/`）`  
+> **顺序**：先在 XBuilder 粘贴本包并 **Publish** 同链 → 再硬刷 mobile-web `?v=plane2`。  
+> 粘贴总览：`docs/xb_patches/plane/APPLY_PLANE.md`；**显示消失修复**见 `APPLY_PLANE_FIX.md`（工作区 `/workspace/xb_src/patches/plane/`）  
 > 美术：原创几何（`mobile-web/assets/plane/`），非商业素材。
 
 ## 模式一句话
@@ -57,7 +57,7 @@
 - [ ] 小怪需约 3 发；大怪需约 10 发；一发不秒
 - [ ] 道路偶发左右弯，换道仍可用
 - [ ] forest / plant / feel1 激励跳过结算不变
-- [ ] Publish 同链 `running_bull` 后硬刷；web `?v=plane1` 对齐
+- [ ] Publish 同链 `running_bull` 后硬刷；web `?v=plane2` 对齐
 
 ## mobile-web 对照
 
@@ -66,4 +66,10 @@
 | 菜单卡片 | 「飞机大战」✈️ |
 | 调试键 | `0` |
 | 素材 | `mobile-web/assets/plane/*.png` |
-| 缓存 | `?v=plane1` |
+| 缓存 | `?v=plane2` |
+
+
+## plane2 显示修复
+
+机体「先显示后消失」：web 为小数道 `LANE_X` 索引 NaN；XB 为跑动造型切到缺帧。  
+按 **`APPLY_PLANE_FIX.md`** Publish 后再硬刷 `?v=plane2`。换道多次机体应一直可见。

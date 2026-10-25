@@ -1,0 +1,33 @@
+// Replace the grounded run-costume block (after setHeading 90) with:
+				setRotationStyle None
+				setHeading 90
+				// plane mapId7: lock known costume "默认"; always show
+				if mapId == 7 {
+					show
+					setCostume "默认"
+					runFrame = runFrame + 0.28 + runSpeed*0.006
+					if runFrame >= 4 {
+						runFrame = runFrame - 4
+					}
+					bob = 0
+					if bullGrounded {
+						if runFrame < 1 {
+							bob = 8
+							setSize playSize * 1.18
+						} else if runFrame < 2 {
+							bob = 0
+							setSize playSize * 1.12
+						} else if runFrame < 3 {
+							bob = 8
+							setSize playSize * 1.18
+						} else {
+							bob = 2
+							setSize playSize * 1.12
+						}
+						setYpos groundY + bob
+					} else {
+						setSize playSize * 1.15
+					}
+				} else if bullGrounded {
+					// … keep existing 跑1–4 / 跳 cycle …
+				}
