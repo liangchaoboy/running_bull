@@ -49,7 +49,13 @@
   const W = 420;
   const H = 740;
   const LANES = 3;
-  const LANE_X = [0.22, 0.5, 0.78];
+  // Subway-style: wider track, lanes closer to rails (was [0.22, 0.5, 0.78])
+  const LANE_X = [0.18, 0.5, 0.82];
+  /** Road half-width as fraction of view width (far→near). Was 0.08 / 0.42. */
+  const ROAD_HALF_FAR = 0.13;
+  const ROAD_HALF_NEAR = 0.50;
+  /** Scale up cow/obstacles so they still fill wider lanes. */
+  const ROAD_SCALE = 1.18;
   const BOMB_COOLDOWN = 1.6;
   /** Longer than hit-zone dwell at start speed so a well-timed jump clears. */
   const JUMP_DURATION = 0.82;
@@ -496,28 +502,29 @@
     return { w: rect.width || W, h: rect.height || H };
   }
 
-  /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom) */
+  /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom).
+   *  Tuned toward Subway Surfers: lower vanishing point, much wider near road. */
   function project(lane, z, vw, vh) {
-    const horizonY = vh * 0.18;
-    const nearY = vh * 0.78;
+    const horizonY = vh * 0.14;
+    const nearY = vh * 0.82;
     const y = horizonY + (nearY - horizonY) * z;
-    const roadHalfFar = vw * 0.08;
-    const roadHalfNear = vw * 0.42;
+    const roadHalfFar = vw * ROAD_HALF_FAR;
+    const roadHalfNear = vw * ROAD_HALF_NEAR;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
     const cx = vw * 0.5;
     const lx = LANE_X[lane];
     const offset = (lx - 0.5) * 2;
     const x = cx + offset * half;
-    const scale = 0.35 + 0.65 * z;
+    const scale = (0.35 + 0.65 * z) * ROAD_SCALE;
     return { x, y, scale, half };
   }
 
   function roadEdges(z, vw, vh) {
-    const horizonY = vh * 0.18;
-    const nearY = vh * 0.78;
+    const horizonY = vh * 0.14;
+    const nearY = vh * 0.82;
     const y = horizonY + (nearY - horizonY) * z;
-    const roadHalfFar = vw * 0.08;
-    const roadHalfNear = vw * 0.42;
+    const roadHalfFar = vw * ROAD_HALF_FAR;
+    const roadHalfNear = vw * ROAD_HALF_NEAR;
     const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
     const cx = vw * 0.5;
     return { y, left: cx - half, right: cx + half, half, cx };
@@ -1304,6 +1311,9 @@
     }
     ctx.globalAlpha = 1;
 
+    // three track grooves (back-facing Subway rails)
+    drawTrackGrooves(vw, vh, "rgba(40,28,18,0.35)", 7);
+
     // edge rails / curbs
     ctx.lineCap = "butt";
     for (let side = 0; side < 2; side++) {
@@ -1433,6 +1443,8 @@
     rg.addColorStop(1, "rgba(255,220,245,0.58)");
     ctx.fillStyle = rg;
     ctx.fill();
+
+    drawTrackGrooves(vw, vh, "rgba(180,120,220,0.22)", 5);
 
     // neon edge rails
     for (let side = 0; side < 2; side++) {
@@ -1594,6 +1606,8 @@
     ctx.fillStyle = rg;
     ctx.fill();
 
+    drawTrackGrooves(vw, vh, "rgba(70,55,40,0.28)", 6);
+
     // soft edge rails
     ctx.lineCap = "round";
     for (let side = 0; side < 2; side++) {
@@ -1653,6 +1667,26 @@
         ctx.beginPath();
         ctx.arc(x, e.y - 24 * sc, 14 * sc, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+  }
+
+  /** Dark rail grooves under each lane (Subway Surfers–style 3 tracks). */
+  function drawTrackGrooves(vw, vh, rgba, nearW) {
+    for (let lane = 0; lane < 3; lane++) {
+      for (let z = 0; z < 1; z += 0.05) {
+        const e0 = roadEdges(z, vw, vh);
+        const e1 = roadEdges(Math.min(1, z + 0.05), vw, vh);
+        const x0 = e0.left + (e0.right - e0.left) * LANE_X[lane];
+        const x1 = e1.left + (e1.right - e1.left) * LANE_X[lane];
+        const w = nearW * (0.25 + 0.75 * z);
+        ctx.strokeStyle = rgba;
+        ctx.lineWidth = w;
+        ctx.lineCap = "butt";
+        ctx.beginPath();
+        ctx.moveTo(x0, e0.y);
+        ctx.lineTo(x1, e1.y);
+        ctx.stroke();
       }
     }
   }
