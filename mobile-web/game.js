@@ -104,10 +104,14 @@
 
   /** @type {Array<{lane:number,z:number,kind:string,alive:boolean}>} */
   let entities = [];
-  /** @type {Array<{lane:number,z:number,life:number}>} */
+  /** @type {Array<{lane:number,z:number,life:number,blast:number}>} */
   let bombs = [];
-  /** @type {Array<{x:number,y:number,vx:number,vy:number,life:number,color:string}>} */
+  /** @type {Array<{x:number,y:number,vx:number,vy:number,life:number,color:string,r?:number}>} */
   let particles = [];
+  /** @type {Array<{lane:number,z:number,life:number,maxLife:number}>} */
+  let blasts = [];
+  let shakeT = 0;
+  let flashT = 0;
 
   /** Drifting star field for 悬空空间 */
   const stars = Array.from({ length: 48 }, (_, i) => ({
@@ -470,6 +474,9 @@
     entities = [];
     bombs = [];
     particles = [];
+    blasts = [];
+    shakeT = 0;
+    flashT = 0;
     overlay.classList.add("hidden");
     overlay.classList.remove("show");
     overEl.classList.add("hidden");
@@ -521,36 +528,71 @@
     return player.jumping || player.landGrace > 0;
   }
 
+  function bombColors() {
+    if (mode === "space") {
+      return { core: "#f0abfc", hot: "#e879f9", spark: "#fff0ff", flash: "rgba(255,180,240,0.55)" };
+    }
+    return { core: "#ff8800", hot: "#ff4400", spark: "#ffe566", flash: "rgba(255,200,80,0.5)" };
+  }
+
+  /** Destroy obstacles on one lane in z range; coins untouched. */
+  function clearLaneObstacles(lane, zMin, zMax, big) {
+    const cols = bombColors();
+    let n = 0;
+    for (const e of entities) {
+      if (!e.alive) continue;
+      if (e.kind !== "obstacle") continue;
+      if (e.lane !== lane) continue;
+      if (e.z < zMin || e.z > zMax) continue;
+      e.alive = false;
+      burst(e.lane, e.z, cols.hot, big ? 22 : 14);
+      spawnBlast(e.lane, e.z, 0.35);
+      n += 1;
+    }
+    return n;
+  }
+
+  function spawnBlast(lane, z, life) {
+    blasts.push({ lane, z, life, maxLife: life });
+  }
+
   function fireBomb() {
     if (!running || dead) return;
     if (bombCd > 0) return;
     bombCd = BOMB_COOLDOWN;
-    bombs.push({ lane: player.lane, z: 0.72, life: 0.55 });
-    btnBomb.disabled = true;
-    btnBomb.classList.add("cooling");
-    const burstColor = mode === "space" ? "#e879f9" : "#c45a1a";
-    for (const e of entities) {
-      if (!e.alive) continue;
-      if (e.kind !== "obstacle") continue;
-      if (e.lane !== player.lane) continue;
-      if (e.z > 0.25 && e.z < 0.95) {
-        e.alive = false;
-        burst(e.lane, e.z, burstColor);
-      }
+    const lane = player.lane;
+    // Projectile travels up the current lane and keeps clearing along the way.
+    bombs.push({ lane, z: 0.78, life: 0.75, blast: 0.16 });
+    if (btnBomb) {
+      btnBomb.disabled = true;
+      btnBomb.classList.add("cooling");
     }
+    shakeT = Math.max(shakeT, 0.32);
+    flashT = Math.max(flashT, 0.22);
+    const cols = bombColors();
+    // Always-visible boom at the cow even if no obstacle is in range yet.
+    burst(lane, 0.78, cols.core, 36);
+    burst(lane, 0.78, cols.spark, 18);
+    spawnBlast(lane, 0.78, 0.45);
+    // Clear whole current lane ahead (docs: 沿当前道上行清障). Coins stay.
+    clearLaneObstacles(lane, -0.08, 1.08, true);
   }
 
-  function burst(lane, z, color) {
+  function burst(lane, z, color, count) {
+    const n = count || 12;
     const { w, h } = viewSize();
-    const p = project(lane, z, w, h);
-    for (let i = 0; i < 10; i++) {
+    const p = project(lane, Math.max(0, Math.min(1, z)), w, h);
+    for (let i = 0; i < n; i++) {
+      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4;
+      const spd = 90 + Math.random() * 220;
       particles.push({
         x: p.x,
-        y: p.y,
-        vx: (Math.random() - 0.5) * 180,
-        vy: -60 - Math.random() * 120,
-        life: 0.4 + Math.random() * 0.3,
+        y: p.y - 12 * p.scale,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 40,
+        life: 0.45 + Math.random() * 0.4,
         color,
+        r: 3 + Math.random() * 5,
       });
     }
   }
@@ -630,10 +672,15 @@
       bombCd -= dt;
       if (bombCd <= 0) {
         bombCd = 0;
-        btnBomb.disabled = false;
-        btnBomb.classList.remove("cooling");
+        if (btnBomb) {
+          btnBomb.disabled = false;
+          btnBomb.classList.remove("cooling");
+        }
       }
     }
+
+    if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
+    if (flashT > 0) flashT = Math.max(0, flashT - dt);
 
     for (const e of entities) {
       if (!e.alive) continue;
@@ -641,10 +688,15 @@
     }
 
     for (const b of bombs) {
-      b.z -= zSpeed * 1.8 * dt;
+      b.z -= zSpeed * 2.2 * dt;
       b.life -= dt;
+      // Keep clearing as the bomb flies up the lane (late/far obstacles).
+      clearLaneObstacles(b.lane, b.z - b.blast, b.z + b.blast * 1.4, false);
     }
-    bombs = bombs.filter((b) => b.life > 0 && b.z > -0.1);
+    bombs = bombs.filter((b) => b.life > 0 && b.z > -0.15);
+
+    for (const bl of blasts) bl.life -= dt;
+    blasts = blasts.filter((bl) => bl.life > 0);
 
     for (const p of particles) {
       p.x += p.vx * dt;
@@ -1139,50 +1191,85 @@
   function drawBombs(vw, vh) {
     for (const b of bombs) {
       const p = project(b.lane, Math.max(0, b.z), vw, vh);
-      const r = 14 * p.scale;
-      if (mode === "space") {
-        ctx.fillStyle = "#6b21a8";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y - 10 * p.scale, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#f0abfc";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y - 10 * p.scale, r * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#fda4af";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p.x + r * 0.6, p.y - 10 * p.scale - r);
-        ctx.lineTo(p.x + r, p.y - 10 * p.scale - r * 1.6);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = "#222";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y - 10 * p.scale, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ff4444";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y - 10 * p.scale, r * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#ffaa00";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p.x + r * 0.6, p.y - 10 * p.scale - r);
-        ctx.lineTo(p.x + r, p.y - 10 * p.scale - r * 1.6);
-        ctx.stroke();
-      }
+      const r = 18 * p.scale;
+      // glow trail
+      const glow = ctx.createRadialGradient(p.x, p.y - 10 * p.scale, 0, p.x, p.y - 10 * p.scale, r * 2.4);
+      glow.addColorStop(0, mode === "space" ? "rgba(240,170,255,0.65)" : "rgba(255,140,40,0.65)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 10 * p.scale, r * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = mode === "space" ? "#6b21a8" : "#222";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 10 * p.scale, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = mode === "space" ? "#f0abfc" : "#ff4444";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 10 * p.scale, r * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = mode === "space" ? "#fda4af" : "#ffaa00";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x + r * 0.6, p.y - 10 * p.scale - r);
+      ctx.lineTo(p.x + r, p.y - 10 * p.scale - r * 1.6);
+      ctx.stroke();
+
+      // 💥 label so the boom is obvious on phone
+      ctx.font = "bold " + Math.round(22 * p.scale) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.globalAlpha = 0.95;
+      ctx.fillText("💥", p.x, p.y - 10 * p.scale);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawBlasts(vw, vh) {
+    for (const bl of blasts) {
+      const p = project(bl.lane, Math.max(0, Math.min(1, bl.z)), vw, vh);
+      const t = 1 - bl.life / bl.maxLife;
+      const rad = (20 + t * 70) * p.scale;
+      ctx.globalAlpha = Math.max(0, bl.life / bl.maxLife) * 0.85;
+      ctx.strokeStyle = mode === "space" ? "#f5d0ff" : "#ffcc66";
+      ctx.lineWidth = 4 * p.scale * (1 - t * 0.5);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 8 * p.scale, rad, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = mode === "space" ? "rgba(232,121,249,0.25)" : "rgba(255,120,0,0.28)";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 8 * p.scale, rad * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
   }
 
   function drawParticles() {
     for (const p of particles) {
-      ctx.globalAlpha = Math.max(0, p.life * 2);
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2.2));
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.r || 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+  }
+
+  function drawBombFlash(vw, vh) {
+    if (flashT <= 0) return;
+    const a = Math.min(1, flashT / 0.22) * 0.55;
+    ctx.fillStyle =
+      mode === "space"
+        ? "rgba(255,180,240," + a + ")"
+        : "rgba(255,200,80," + a + ")";
+    ctx.fillRect(0, 0, vw, vh);
+    ctx.font = "bold 42px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.globalAlpha = Math.min(1, flashT / 0.15);
+    ctx.fillText("💥", vw * 0.5, vh * 0.62);
+    ctx.globalAlpha = 1;
   }
 
   function drawTitleHint(vw, vh) {
@@ -1196,6 +1283,11 @@
   function render() {
     const { w: vw, h: vh } = viewSize();
     ctx.clearRect(0, 0, vw, vh);
+    ctx.save();
+    if (shakeT > 0) {
+      const mag = 6 * (shakeT / 0.32);
+      ctx.translate((Math.random() - 0.5) * 2 * mag, (Math.random() - 0.5) * 2 * mag);
+    }
     if (mode === "space") {
       drawSkySpace(vw, vh);
       drawRoadSpace(vw, vh);
@@ -1206,10 +1298,13 @@
 
     const sorted = entities.slice().sort((a, b) => a.z - b.z);
     for (const e of sorted) drawEntity(e, vw, vh);
+    drawBlasts(vw, vh);
     drawBombs(vw, vh);
     drawPlayer(vw, vh);
     drawParticles();
+    drawBombFlash(vw, vh);
     drawTitleHint(vw, vh);
+    ctx.restore();
   }
 
   function loop(ts) {
@@ -1223,11 +1318,13 @@
   }
 
   function bindPress(el, fn) {
+    if (!el) return;
     const handler = (ev) => {
       ev.preventDefault();
+      ev.stopPropagation();
       fn();
     };
-    el.addEventListener("pointerdown", handler);
+    el.addEventListener("pointerdown", handler, { passive: false });
   }
 
   bindPress(btnLeft, () => changeLane(-1));
