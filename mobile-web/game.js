@@ -7,6 +7,14 @@
   const hudDist = document.getElementById("hud-dist");
   const hudCoins = document.getElementById("hud-coins");
   const hudScore = document.getElementById("hud-score");
+  const hudLabelDist = document.getElementById("hud-label-dist");
+  const hudLabelScore = document.getElementById("hud-label-score");
+  const hudIcoDist = document.getElementById("hud-ico-dist");
+  const hudIcoScore = document.getElementById("hud-ico-score");
+  const lbScoreTitle = document.getElementById("lb-score-title");
+  const lbTimeTitle = document.getElementById("lb-time-title");
+  const overLineScore = document.getElementById("over-line-score");
+  const overLineTime = document.getElementById("over-line-time");
   const overlay = document.getElementById("overlay");
   const overEl = document.getElementById("over");
   const btnStart = document.getElementById("btn-start");
@@ -58,6 +66,16 @@
   const SPAWN_BASE = 1.55;
   const SPAWN_MIN = 0.95;
   const SPAWN_DIST_DIV = 1400;
+  /** 慢慢跑酷：更慢、更疏、lo-fi。积分主看存活时间。 */
+  const CHILL_SPEED_START = 105;
+  const CHILL_SPEED_MAX = 165;
+  const CHILL_SPEED_RAMP = 0.045;
+  const CHILL_SPAWN_BASE = 2.65;
+  const CHILL_SPAWN_MIN = 1.85;
+  const CHILL_SPAWN_DIST_DIV = 2800;
+  /** Chill score: 10 pts / surviving second + 1 per coin (bonus only). */
+  const CHILL_TIME_PTS = 10;
+  const CHILL_COIN_BONUS = 1;
   /** Lane visual follow: higher = snappier (was ~14). */
   const LANE_LERP = 30;
   /** Immediate snap fraction on lane change so first frame moves. */
@@ -80,7 +98,7 @@
   const LS_LB = "rb_leaderboard_v1";
   const LB_MAX = 20;
 
-  /** @type {"earth"|"space"} */
+  /** @type {"earth"|"space"|"chill"} */
   let mode = "earth";
 
   let dpr = 1;
@@ -215,7 +233,7 @@
   }
 
   function emptyLb() {
-    return { byScore: [], byPlayTime: [] };
+    return { byScore: [], byPlayTime: [], byChill: [] };
   }
 
   function loadLb() {
@@ -226,6 +244,7 @@
       return {
         byScore: Array.isArray(data.byScore) ? data.byScore : [],
         byPlayTime: Array.isArray(data.byPlayTime) ? data.byPlayTime : [],
+        byChill: Array.isArray(data.byChill) ? data.byChill : [],
       };
     } catch (_) {
       return emptyLb();
@@ -256,6 +275,14 @@
     return list.slice(0, max);
   }
 
+  function computeScore() {
+    if (mode === "chill") {
+      // Primary: survival time. Coins are a small bonus only.
+      return Math.floor(sessionPlaySec * CHILL_TIME_PTS) + coins * CHILL_COIN_BONUS;
+    }
+    return Math.floor(distance) + coins * 10;
+  }
+
   function recordRun(finalScore, playSec) {
     const user = currentUser || {
       id: "guest_local",
@@ -269,9 +296,14 @@
       avatar: user.avatar || "",
       score: Math.max(0, Math.floor(finalScore)),
       playTime: Math.max(0, Math.round(playSec * 10) / 10),
+      mode: mode,
     };
     const lb = loadLb();
-    lb.byScore = upsertRecord(lb.byScore, entry, "score", LB_MAX);
+    if (mode === "chill") {
+      lb.byChill = upsertRecord(lb.byChill, entry, "score", LB_MAX);
+    } else {
+      lb.byScore = upsertRecord(lb.byScore, entry, "score", LB_MAX);
+    }
     lb.byPlayTime = upsertRecord(lb.byPlayTime, entry, "playTime", LB_MAX);
     saveLb(lb);
     return lb;
@@ -347,9 +379,11 @@
     if (!currentUser) return null;
     const lb = loadLb();
     const s = lb.byScore.find((r) => r.id === currentUser.id);
+    const c = lb.byChill.find((r) => r.id === currentUser.id);
     const t = lb.byPlayTime.find((r) => r.id === currentUser.id);
     return {
       score: s ? s.score : 0,
+      chillScore: c ? c.score : 0,
       playTime: t ? t.playTime : 0,
     };
   }
@@ -357,23 +391,34 @@
   function renderLeaderboards() {
     const lb = loadLb();
     window.__RB_LB = lb;
-    renderLbList(lbScoreEl, lb.byScore, "score", (v) => String(v));
+    const chill = mode === "chill";
+    if (lbScoreTitle) lbScoreTitle.textContent = chill ? "时长积分榜" : "得分榜";
+    if (lbTimeTitle) lbTimeTitle.textContent = chill ? "最长存活" : "最长游玩";
+    if (chill) {
+      renderLbList(lbScoreEl, lb.byChill, "score", (v) => String(v));
+    } else {
+      renderLbList(lbScoreEl, lb.byScore, "score", (v) => String(v));
+    }
     renderLbList(lbTimeEl, lb.byPlayTime, "playTime", formatTime);
     if (lbMineEl) {
       const best = myBest();
       if (currentUser && best) {
-        lbMineEl.textContent =
-          "我的最佳：得分 " + best.score + " · 最长 " + formatTime(best.playTime);
+        lbMineEl.textContent = chill
+          ? "我的最佳：时长积分 " + best.chillScore + " · 最长 " + formatTime(best.playTime)
+          : "我的最佳：得分 " + best.score + " · 最长 " + formatTime(best.playTime);
         lbMineEl.classList.remove("hidden");
       } else {
-        lbMineEl.textContent = "登录后记录你的得分与游玩时长";
+        lbMineEl.textContent = chill
+          ? "登录后记录你的存活时长积分"
+          : "登录后记录你的得分与游玩时长";
         lbMineEl.classList.remove("hidden");
       }
     }
     if (overLbEl) {
-      const top = lb.byScore.slice(0, 3);
+      const top = chill ? lb.byChill.slice(0, 3) : lb.byScore.slice(0, 3);
+      const label = chill ? "时长榜 " : "高分榜 ";
       overLbEl.innerHTML = top.length
-        ? "高分榜 " +
+        ? label +
           top
             .map((r, i) => i + 1 + "." + escapeHtml(r.nickname) + " " + r.score)
             .join(" · ")
@@ -410,11 +455,14 @@
   };
 
   function setMode(next) {
-    if (next !== "earth" && next !== "space") return;
+    if (next !== "earth" && next !== "space" && next !== "chill") return;
     mode = next;
     appEl.setAttribute("data-theme", mode);
     if (themeMeta) {
-      themeMeta.setAttribute("content", mode === "space" ? "#6b4a9e" : "#1a8cff");
+      themeMeta.setAttribute(
+        "content",
+        mode === "space" ? "#6b4a9e" : mode === "chill" ? "#7a9e8e" : "#1a8cff"
+      );
     }
     if (modePick) {
       modePick.querySelectorAll(".mode-card").forEach((btn) => {
@@ -423,6 +471,16 @@
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
     }
+    applyHudLabels();
+    renderLeaderboards();
+  }
+
+  function applyHudLabels() {
+    const chill = mode === "chill";
+    if (hudLabelDist) hudLabelDist.textContent = chill ? "时长" : "距离";
+    if (hudLabelScore) hudLabelScore.textContent = chill ? "时长积分" : "得分";
+    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : "🏁";
+    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : "⭐";
   }
 
   function resize() {
@@ -516,8 +574,12 @@
   }
 
   function updateHud() {
-    score = Math.floor(distance) + coins * 10;
-    hudDist.textContent = String(Math.floor(distance));
+    score = computeScore();
+    if (mode === "chill") {
+      hudDist.textContent = formatTime(sessionPlaySec);
+    } else {
+      hudDist.textContent = String(Math.floor(distance));
+    }
     hudCoins.textContent = String(coins);
     hudScore.textContent = String(score);
   }
@@ -559,6 +621,16 @@
         ember: "#fda4af",
         smoke: "rgba(200,160,255,0.55)",
         flash: "rgba(255,180,240,0.7)",
+      };
+    }
+    if (mode === "chill") {
+      return {
+        core: "#fde68a",
+        hot: "#fbbf24",
+        spark: "#fef3c7",
+        ember: "#fcd34d",
+        smoke: "rgba(120,140,130,0.4)",
+        flash: "rgba(253,230,138,0.55)",
       };
     }
     return {
@@ -704,10 +776,10 @@
   }
 
   function coinPickupFx(lane, z) {
-    const cols = mode === "space" ? "#ffc0ef" : "#ffd700";
+    const cols = mode === "space" ? "#ffc0ef" : mode === "chill" ? "#f6d7a8" : "#ffd700";
     burst(lane, z, cols, 16);
     boomBurst(lane, z, 0.25);
-    spawnFloatText(lane, z, "+10", cols);
+    spawnFloatText(lane, z, mode === "chill" ? "+1" : "+10", cols);
     coinPulseT = 0.35;
     if (hudCoins) {
       hudCoins.classList.remove("pop");
@@ -723,8 +795,14 @@
       if (r < 0.75) return { variant: "crystal_cluster", tall: false };
       return { variant: "obelisk", tall: true };
     }
+    if (mode === "chill") {
+      // Soft, jumpable-only props — no trains.
+      const r = Math.random();
+      if (r < 0.4) return { variant: "box", tall: false };
+      if (r < 0.75) return { variant: "barrier", tall: false };
+      return { variant: "sign", tall: false };
+    }
     const r = Math.random();
-    // Weighted toward jumpable props; trains are rarer but look cool.
     if (r < 0.34) return { variant: "box", tall: false };
     if (r < 0.58) return { variant: "barrier", tall: false };
     if (r < 0.78) return { variant: "sign", tall: false };
@@ -786,10 +864,50 @@
   }
 
   function showGameOverCard() {
-    document.getElementById("over-dist").textContent = String(Math.floor(distance));
+    score = computeScore();
+    document.getElementById("over-dist").textContent =
+      mode === "chill" ? formatTime(sessionPlaySec) : String(Math.floor(distance));
     document.getElementById("over-coins").textContent = String(coins);
     document.getElementById("over-score").textContent = String(score);
     if (overPlaytimeEl) overPlaytimeEl.textContent = formatTime(sessionPlaySec);
+    const distLine = document.getElementById("over-line-dist");
+    if (distLine) {
+      if (mode === "chill") {
+        distLine.innerHTML =
+          "存活 <strong id=\"over-dist\">" +
+          formatTime(sessionPlaySec) +
+          "</strong> · 金币 <strong id=\"over-coins\">" +
+          coins +
+          "</strong>";
+      } else {
+        distLine.innerHTML =
+          "距离 <strong id=\"over-dist\">" +
+          Math.floor(distance) +
+          "</strong> · 金币 <strong id=\"over-coins\">" +
+          coins +
+          "</strong>";
+      }
+    }
+    if (overLineScore) {
+      overLineScore.innerHTML =
+        (mode === "chill" ? "时长积分 " : "得分 ") +
+        "<strong id=\"over-score\">" +
+        score +
+        "</strong>" +
+        (mode === "chill"
+          ? " <span class=\"score-hint\">（秒×10 + 金币）</span>"
+          : "");
+    }
+    if (overLineTime) {
+      overLineTime.classList.toggle("hidden", mode === "chill"); // already shown as 存活
+    }
+    const encourage = document.querySelector("#over .over-encourage");
+    if (encourage) {
+      encourage.textContent =
+        mode === "chill" ? "慢慢来，再多待一会儿 😎" : "勇敢牛牛，再来一次";
+    }
+    const badge = document.querySelector("#over .over-badge");
+    if (badge) badge.textContent = mode === "chill" ? "CHILL OVER" : "GAME OVER";
     recordRun(score, sessionPlaySec);
     renderLeaderboards();
     overEl.classList.remove("hidden");
@@ -827,8 +945,12 @@
     }
     if (!running) return;
 
-    speed = Math.min(SPEED_MAX, SPEED_START + distance * SPEED_RAMP);
-    const zSpeed = (speed / 420) * 0.50;
+    if (mode === "chill") {
+      speed = Math.min(CHILL_SPEED_MAX, CHILL_SPEED_START + distance * CHILL_SPEED_RAMP);
+    } else {
+      speed = Math.min(SPEED_MAX, SPEED_START + distance * SPEED_RAMP);
+    }
+    const zSpeed = (speed / 420) * (mode === "chill" ? 0.42 : 0.50);
     roadScroll += speed * dt;
     distance += (speed * dt) / 18;
     runPhase += dt * (speed / 80);
@@ -846,7 +968,7 @@
         player.jumpT = 0;
         player.landGrace = JUMP_LAND_GRACE;
         landDustT = 0.28;
-        burst(player.lane, 0.78, mode === "space" ? "rgba(255,200,240,0.7)" : "rgba(180,140,90,0.7)", 10);
+        burst(player.lane, 0.78, mode === "space" ? "rgba(255,200,240,0.7)" : mode === "chill" ? "rgba(200,190,160,0.65)" : "rgba(180,140,90,0.7)", 10);
         if (player.jumpBuffered > 0) {
           player.jumping = true;
           player.jumpT = 0;
@@ -932,14 +1054,20 @@
 
     spawnAcc -= dt;
     coinAcc -= dt;
-    const spawnInterval = Math.max(SPAWN_MIN, SPAWN_BASE - distance / SPAWN_DIST_DIV);
+    const spawnInterval =
+      mode === "chill"
+        ? Math.max(CHILL_SPAWN_MIN, CHILL_SPAWN_BASE - distance / CHILL_SPAWN_DIST_DIV)
+        : Math.max(SPAWN_MIN, SPAWN_BASE - distance / SPAWN_DIST_DIV);
     if (spawnAcc <= 0) {
       spawnObstacle();
-      spawnAcc = spawnInterval * (0.9 + Math.random() * 0.55);
+      spawnAcc =
+        spawnInterval *
+        (mode === "chill" ? 1.05 + Math.random() * 0.55 : 0.9 + Math.random() * 0.55);
     }
     if (coinAcc <= 0) {
       spawnCoinLine();
-      coinAcc = 1.7 + Math.random() * 1.4;
+      coinAcc =
+        mode === "chill" ? 2.2 + Math.random() * 1.6 : 1.7 + Math.random() * 1.4;
     }
 
     updateHud();
@@ -1382,6 +1510,151 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+  }
+
+  function drawSkyChill(vw, vh) {
+    // lo-fi dusk: soft peach → mint → lavender
+    const g = ctx.createLinearGradient(0, 0, 0, vh * 0.6);
+    g.addColorStop(0, "#8fadc4");
+    g.addColorStop(0.35, "#b8c9c0");
+    g.addColorStop(0.65, "#d4c4b0");
+    g.addColorStop(1, "#e8d5c4");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, vw, vh);
+
+    // soft sun disk
+    const sx = vw * 0.78;
+    const sy = vh * 0.16;
+    const sr = vw * 0.09;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 3);
+    halo.addColorStop(0, "rgba(255,220,170,0.55)");
+    halo.addColorStop(1, "rgba(255,220,170,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f6d7a8";
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // slow drifting soft clouds
+    const cloudOff = (roadScroll * 0.025) % (vw * 1.5);
+    drawCloud(vw * 0.2 - cloudOff * 0.2, vh * 0.15, vw * 0.14, 0.35);
+    drawCloud(vw * 0.6 + cloudOff * 0.15, vh * 0.12, vw * 0.18, 0.28);
+    drawCloud(vw * 0.85 - cloudOff * 0.1, vh * 0.2, vw * 0.11, 0.3);
+
+    // gentle far hills
+    ctx.fillStyle = "#9bb5a8";
+    ctx.beginPath();
+    ctx.moveTo(0, vh * 0.36);
+    for (let i = 0; i <= 8; i++) {
+      const x = (i / 8) * vw;
+      const y = vh * (0.3 + 0.05 * Math.sin(i * 1.4 + animTime * 0.05));
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(vw, vh * 0.5);
+    ctx.lineTo(0, vh * 0.5);
+    ctx.fill();
+    ctx.fillStyle = "#7f9e90";
+    ctx.beginPath();
+    ctx.moveTo(0, vh * 0.4);
+    for (let i = 0; i <= 8; i++) {
+      const x = (i / 8) * vw;
+      const y = vh * (0.35 + 0.06 * Math.sin(i * 1.1 + 1.2));
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(vw, vh * 0.52);
+    ctx.lineTo(0, vh * 0.52);
+    ctx.fill();
+  }
+
+  function drawRoadChill(vw, vh) {
+    const far = roadEdges(0, vw, vh);
+    const near = roadEdges(1, vw, vh);
+
+    // soft meadow shoulders
+    const grass = ctx.createLinearGradient(0, far.y, 0, near.y + 40);
+    grass.addColorStop(0, "#a8c4b0");
+    grass.addColorStop(1, "#7fa890");
+    ctx.fillStyle = grass;
+    ctx.fillRect(0, far.y, vw, near.y - far.y + 50);
+
+    // warm dusty path
+    ctx.beginPath();
+    ctx.moveTo(far.left, far.y);
+    ctx.lineTo(far.right, far.y);
+    ctx.lineTo(near.right, near.y);
+    ctx.lineTo(near.left, near.y);
+    ctx.closePath();
+    const rg = ctx.createLinearGradient(0, far.y, 0, near.y);
+    rg.addColorStop(0, "#cbb89a");
+    rg.addColorStop(0.5, "#b8a07e");
+    rg.addColorStop(1, "#8f7a5c");
+    ctx.fillStyle = rg;
+    ctx.fill();
+
+    // soft edge rails
+    ctx.lineCap = "round";
+    for (let side = 0; side < 2; side++) {
+      ctx.beginPath();
+      for (let z = 0; z <= 1; z += 0.05) {
+        const e = roadEdges(z, vw, vh);
+        const x = side === 0 ? e.left : e.right;
+        if (z === 0) ctx.moveTo(x, e.y);
+        else ctx.lineTo(x, e.y);
+      }
+      ctx.strokeStyle = "rgba(255,245,220,0.75)";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    // relaxed lane dashes
+    ctx.strokeStyle = "rgba(255,250,230,0.7)";
+    for (let lane = 0; lane < 2; lane++) {
+      let drawing = false;
+      const dashPeriod = 0.16;
+      const offset = (roadScroll / 260) % dashPeriod;
+      ctx.lineWidth = 2;
+      for (let z = 0; z <= 1; z += 0.02) {
+        const e = roadEdges(z, vw, vh);
+        const x = e.left + (e.right - e.left) * ((lane + 1) / 3);
+        const phase = (z + offset) % dashPeriod;
+        const on = phase < dashPeriod * 0.4;
+        if (on) {
+          if (!drawing) {
+            ctx.beginPath();
+            ctx.moveTo(x, e.y);
+            drawing = true;
+          } else ctx.lineTo(x, e.y);
+        } else if (drawing) {
+          ctx.stroke();
+          drawing = false;
+        }
+      }
+      if (drawing) ctx.stroke();
+    }
+
+    // chill roadside lanterns (soft glow)
+    for (let i = 0; i < 6; i++) {
+      const z = ((i / 6) + (roadScroll / 700) % 1) % 1;
+      if (z < 0.04 || z > 0.96) continue;
+      const e = roadEdges(z, vw, vh);
+      const sc = 0.35 + z * 0.85;
+      for (const side of [-1, 1]) {
+        const x = side < 0 ? e.left - 12 * sc : e.right + 12 * sc;
+        ctx.fillStyle = "#8a9a90";
+        ctx.fillRect(x - 1.5 * sc, e.y - 22 * sc, 3 * sc, 22 * sc);
+        ctx.fillStyle = "rgba(255,230,180,0.7)";
+        ctx.beginPath();
+        ctx.arc(x, e.y - 24 * sc, 4 * sc, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,220,160,0.18)";
+        ctx.beginPath();
+        ctx.arc(x, e.y - 24 * sc, 14 * sc, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   function drawGroundShadow(p, w, d) {
@@ -1867,9 +2140,9 @@
     ctx.scale(1 / Math.sqrt(stretch), stretch);
     ctx.rotate((lean * Math.PI) / 180);
 
-    const body = mode === "space" ? "#d4899a" : "#c47a2c";
-    const bodyHi = mode === "space" ? "#e8a0b0" : "#d4893a";
-    const limb = mode === "space" ? "#9a6bb5" : "#5c3a1e";
+    const body = mode === "space" ? "#d4899a" : mode === "chill" ? "#c9a07a" : "#c47a2c";
+    const bodyHi = mode === "space" ? "#e8a0b0" : mode === "chill" ? "#e0c4a0" : "#d4893a";
+    const limb = mode === "space" ? "#9a6bb5" : mode === "chill" ? "#7a6a55" : "#5c3a1e";
 
     // legs with joints
     ctx.strokeStyle = limb;
@@ -2170,10 +2443,19 @@
 
   function drawTitleHint(vw, vh) {
     if (running || dead) return;
-    ctx.fillStyle = mode === "space" ? "rgba(255,220,245,0.45)" : "rgba(255,255,255,0.35)";
+    ctx.fillStyle =
+      mode === "space"
+        ? "rgba(255,220,245,0.45)"
+        : mode === "chill"
+          ? "rgba(255,240,220,0.5)"
+          : "rgba(255,255,255,0.35)";
     ctx.font = "bold 16px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("勇敢牛牛，不怕困难", vw / 2, vh * 0.14);
+    ctx.fillText(
+      mode === "chill" ? "慢慢跑酷 · 积分看时长 😎" : "勇敢牛牛，不怕困难",
+      vw / 2,
+      vh * 0.14
+    );
   }
 
   function render() {
@@ -2187,6 +2469,9 @@
     if (mode === "space") {
       drawSkySpace(vw, vh);
       drawRoadSpace(vw, vh);
+    } else if (mode === "chill") {
+      drawSkyChill(vw, vh);
+      drawRoadChill(vw, vh);
     } else {
       drawSkyEarth(vw, vh);
       drawRoadEarth(vw, vh);
@@ -2372,6 +2657,9 @@
         break;
       case "7":
         if (!running) setMode("space");
+        break;
+      case "5":
+        if (!running) setMode("chill");
         break;
       default:
         break;

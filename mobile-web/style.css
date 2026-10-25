@@ -37,6 +37,10 @@ html, body {
   background: linear-gradient(180deg, #2a1a4a 0%, #6b4a9e 35%, #c48fd9 70%, #f5d0e8 100%);
 }
 
+#app[data-theme="chill"] {
+  background: linear-gradient(180deg, #8fadc4 0%, #b8c9c0 40%, #d4c4b0 70%, #e8d5c4 100%);
+}
+
 #hud {
   position: absolute;
   top: 0;
@@ -275,6 +279,10 @@ html, body {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin: 0 0 16px;
+}
+
+#mode-pick .mode-card.chill {
+  grid-column: 1 / -1;
 }
 
 .mode-card {
@@ -780,4 +788,67 @@ html, body {
 #btn-retry {
   position: relative;
   overflow: hidden;
+}
+
+
+/* --- 慢慢跑酷 chill theme --- */
+.mode-card.chill.selected {
+  border-color: #7a9e8e;
+  background: linear-gradient(180deg, #f5f0e8, #e4efe8);
+  box-shadow: 0 0 0 3px rgba(122, 158, 142, 0.28);
+}
+
+#app[data-theme="chill"] #overlay,
+#app[data-theme="chill"] #over {
+  background: rgba(40, 50, 48, 0.62);
+}
+
+#app[data-theme="chill"] .card {
+  background: linear-gradient(180deg, #fffaf3, #eef5f0);
+  box-shadow: 0 16px 40px rgba(60, 80, 70, 0.3);
+}
+
+#app[data-theme="chill"] .slogan {
+  color: #8a7a5c;
+}
+
+#app[data-theme="chill"] .card h1 {
+  color: #5a7a6a;
+}
+
+#app[data-theme="chill"] .primary {
+  background: linear-gradient(180deg, #a8c4b0, #6e9480);
+  box-shadow: 0 4px 0 #4a6e5c;
+}
+
+#app[data-theme="chill"] .primary:active {
+  box-shadow: 0 2px 0 #4a6e5c;
+}
+
+#app[data-theme="chill"] .touch-btn.jump {
+  background: rgba(180, 170, 140, 0.92);
+  color: #3a3428;
+}
+
+#app[data-theme="chill"] .touch-btn.bomb {
+  background: rgba(140, 160, 150, 0.92);
+}
+
+#app[data-theme="chill"] .hud-pill {
+  background: rgba(50, 60, 55, 0.5);
+  border-color: rgba(230, 220, 200, 0.28);
+}
+
+#app[data-theme="chill"] .lb-col h3 {
+  color: #5a7a6a;
+}
+
+#app[data-theme="chill"] .result strong {
+  color: #5a7a6a;
+}
+
+.score-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #889;
 }
