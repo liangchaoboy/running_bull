@@ -14,6 +14,14 @@
 - 阳光神光 backdrop + 绿色小径；道心透明给三道
 - 道边 Quaternius / Kenney 树灌（CC0）；**不含 Glimmerwood**
 - 见 `assets/forest/CREDITS.md`
+- 前冲景：停掉 forest_road 平铺纵滑；树/花灌随 roadScroll 逼近；近景放大 + 光斑加强
+
+### XBuilder Publish 记录（2026-10-25 Asia/Shanghai）
+- 同链 **running_bull**；优美森林 **linjing** backdrop
+- **mapId3** 路面冻结（不再横滑/壁纸纵滑）
+- 树 / 光斑 / 虚线往镜头冲（近大远小 + 景深速差）
+- mobile-web 同步：`?v=forest2`（`drawSkyForest` / `drawRoadForest`）
+- 量化回归见 `docs/DEPTH_FEEL_SCORECARD.md`
 
 ## 3. 回归
 植物跑酷 / 抽奖 / 慢慢跑酷 / 无敌 / 炸弹保持不变。

@@ -3213,7 +3213,8 @@
       const dw = iw * scale;
       const dh = ih * scale;
       const dx = (vw - dw) * 0.5;
-      const dy = vh * 0.0 - dh * 0.05;
+      // subtle far-canopy vertical parallax only (no sideways slide)
+      const dy = vh * 0.0 - dh * 0.05 + (roadScroll * 0.02) % 8;
       ctx.drawImage(bg, dx, dy, dw, dh);
       // extend meadow below backdrop into near field
       const fade = ctx.createLinearGradient(0, vh * 0.42, 0, vh * 0.62);
@@ -3298,14 +3299,24 @@
     ctx.fillStyle = rg;
     ctx.fill();
 
-    // soft sun dapples on path
-    for (let i = 0; i < 10; i++) {
-      const z = ((i / 10) + (roadScroll / 900) % 1) % 1;
+    // soft sun dapples on path (rush toward camera / bottom)
+    for (let i = 0; i < 12; i++) {
+      const z = ((i / 12) + (roadScroll / 720) % 1) % 1;
+      if (z < 0.04 || z > 0.98) continue;
       const e = roadEdges(z, vw, vh);
       const w = e.right - e.left;
-      ctx.fillStyle = "rgba(255,236,160," + (0.06 + 0.1 * z) + ")";
+      const a = 0.05 + 0.14 * z * z;
+      ctx.fillStyle = "rgba(255,236,160," + a + ")";
       ctx.beginPath();
-      ctx.ellipse(e.left + w * (0.25 + (i % 3) * 0.22), e.y, 14 * z + 6, 5 * z + 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        e.left + w * (0.22 + (i % 4) * 0.18),
+        e.y,
+        10 * z + 5 + 8 * z * z,
+        3.5 * z + 2 + 3 * z * z,
+        0,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
     }
 
@@ -3337,40 +3348,57 @@
       if (drawing) ctx.stroke();
     }
 
-    // scrolling roadside overlay (transparent center)
+    // static/faint shoulder mask only — no wallpaper vertical scroll
+    // (tiling scroll fought the vanishing-point road)
     const roadImg = forestImgs.forest_road;
     if (roadImg && roadImg.complete && roadImg.naturalWidth) {
-      const stripH = vh * 0.62;
-      const period = stripH;
-      const scrollY = (roadScroll * 0.55) % period;
-      for (let k = -1; k <= 1; k++) {
-        const dy = far.y - scrollY + k * period;
-        ctx.globalAlpha = 0.92;
-        ctx.drawImage(roadImg, 0, dy, vw, period);
-      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, far.y, vw, near.y - far.y + 40);
+      ctx.clip();
+      // punch transparent lane corridor so overlay stays on shoulders
+      ctx.beginPath();
+      ctx.moveTo(0, far.y);
+      ctx.lineTo(far.left, far.y);
+      ctx.lineTo(near.left, near.y + 40);
+      ctx.lineTo(0, near.y + 40);
+      ctx.closePath();
+      ctx.moveTo(vw, far.y);
+      ctx.lineTo(far.right, far.y);
+      ctx.lineTo(near.right, near.y + 40);
+      ctx.lineTo(vw, near.y + 40);
+      ctx.closePath();
+      ctx.clip();
+      ctx.globalAlpha = 0.28;
+      const maskH = near.y - far.y + 50;
+      ctx.drawImage(roadImg, 0, far.y - 8, vw, maskH);
+      ctx.restore();
       ctx.globalAlpha = 1;
     }
 
-    // Quaternius / Kenney trees along path edges (depth sorted by z)
+    // Quaternius / Kenney trees — denser + faster approach for forward rush
     const treeKeys = FOREST_TREE_KEYS;
-    for (let i = 0; i < 12; i++) {
-      const z = ((i / 12) + (roadScroll / 780) % 1) % 1;
+    const TREE_N = 17;
+    for (let i = 0; i < TREE_N; i++) {
+      const z = ((i / TREE_N) + (roadScroll / 500) % 1) % 1;
       if (z < 0.03 || z > 0.97) continue;
       const e = roadEdges(z, vw, vh);
-      const sc = 0.4 + z * 1.15;
+      const sc = 0.38 + z * 1.35;
       const key = treeKeys[i % treeKeys.length];
       const img = forestImgs[key];
       const side = i % 2 === 0 ? -1 : 1;
       const x = side < 0 ? e.left - 18 * sc : e.right + 18 * sc;
       drawForestTreeSprite(img, x, e.y + 4 * sc, sc * (0.85 + (i % 3) * 0.12), side > 0 && i % 3 === 0);
     }
-    // near flower bushes
+    // flower bushes scroll with roadScroll (same depth loop as trees)
     const bush = forestImgs.bush_quat_flowers;
     if (bush) {
-      for (let i = 0; i < 4; i++) {
-        const z = 0.72 + i * 0.06;
-        const e = roadEdges(Math.min(0.98, z), vw, vh);
-        const sc = 0.55 + z * 0.5;
+      const BUSH_N = 6;
+      for (let i = 0; i < BUSH_N; i++) {
+        const z = ((i / BUSH_N) + (roadScroll / 560) % 1) % 1;
+        if (z < 0.08 || z > 0.96) continue;
+        const e = roadEdges(z, vw, vh);
+        const sc = 0.45 + z * 0.7;
         drawForestTreeSprite(bush, e.left - 10 * sc, e.y + 6, sc * 0.55, false);
         drawForestTreeSprite(bush, e.right + 10 * sc, e.y + 6, sc * 0.55, true);
       }
