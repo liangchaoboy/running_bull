@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="app" data-theme="earth">
     <header id="hud" aria-live="polite">
       <div class="hud-block">
         <span class="hud-label">距离</span>
@@ -40,7 +40,21 @@
       <div class="card">
         <p class="slogan">勇敢牛牛，不怕困难</p>
         <h1>天天跑酷</h1>
-        <p class="hint">三道换道 · 点跳 · 捡金币 · 丢炸弹</p>
+        <p class="hint">选地图 · 三道换道 · 点跳 · 捡金币 · 丢炸弹</p>
+
+        <div id="mode-pick" role="group" aria-label="选择地图">
+          <button type="button" class="mode-card selected" data-mode="earth" aria-pressed="true">
+            <span class="mode-emoji" aria-hidden="true">🛤️</span>
+            <span class="mode-name">土路跑酷</span>
+            <span class="mode-desc">阳光土路 · 木箱障碍</span>
+          </button>
+          <button type="button" class="mode-card" data-mode="space" aria-pressed="false">
+            <span class="mode-emoji" aria-hidden="true">✨</span>
+            <span class="mode-name">悬空空间</span>
+            <span class="mode-desc">粉紫星空 · 少女感</span>
+          </button>
+        </div>
+
         <ul class="tips">
           <li>左右按钮或左右滑 = 换道</li>
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
@@ -57,6 +71,7 @@
         <p class="result">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
         <p class="result score">得分 <strong id="over-score">0</strong></p>
         <button type="button" id="btn-retry" class="primary">再来一局</button>
+        <button type="button" id="btn-change-mode" class="ghost">换地图</button>
       </div>
     </div>
   </div>

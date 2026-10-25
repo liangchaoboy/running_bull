@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-25（悬空空间 → 手机网页）
+
+- 同步 XBuilder 地图「悬空空间」进 [`mobile-web/`](../mobile-web/)：开局可选 **土路跑酷** / **悬空空间**。
+- 悬空空间：粉紫星云、弯月、漂星、半透明星轨三道、水晶粉障；操作与金币/炸弹不变。
+- 触控选图 + 结算「换地图」；桌面调试标题页 `4`/`7`。
+- 备用 Pages：https://liangchaoboy.github.io/running_bull/mobile-web/
+- 零新依赖；未改 XBuilder 工程。
+
 ## 2026-10-25（微信文档）
 
 - 更新 WECHAT_DISTRIBUTION：主路径改为自托管手机网页；备用 Pages https://liangchaoboy.github.io/running_bull/mobile-web/；正式入口待七牛 Kodo+CDN。
