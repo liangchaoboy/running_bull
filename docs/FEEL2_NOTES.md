@@ -45,4 +45,6 @@ Repo mirror: `docs/xb_patches/feel2/`
 
 ## SHA / ?v=
 
-_(filled after push)_
+`9a7c149` · `?v=feel2`
+
+Play: https://liangchaoboy.github.io/running_bull/mobile-web/?v=feel2
