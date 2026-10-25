@@ -41,6 +41,12 @@ html, body {
   background: linear-gradient(180deg, #8fadc4 0%, #b8c9c0 40%, #d4c4b0 70%, #e8d5c4 100%);
 }
 
+.hud-pill-aux,
+.hud-pill.invuln-pill.hidden,
+.hud-pill.boost-pill.hidden {
+  display: none !important;
+}
+
 #hud {
   position: absolute;
   top: 0;
@@ -1256,9 +1262,27 @@ html, body {
   flex-direction: column;
   gap: 8px;
 }
-.rewarded-ad-actions .primary:disabled {
-  opacity: 0.45;
+.rewarded-ad-actions .primary:disabled,
+.rewarded-ad-actions .primary.is-locked {
+  opacity: 0.42;
   cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
+  background: #334155;
+  color: #94a3b8;
+}
+.rewarded-ad-actions .primary:disabled::after,
+.rewarded-ad-actions .primary.is-locked::after {
+  content: "（倒计时中）";
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 4px;
+  color: #64748b;
+}
+.rewarded-ad-actions .primary:not(:disabled):not(.is-locked) {
+  cursor: pointer;
+  filter: none;
 }
 .rewarded-ad-actions .ghost {
   appearance: none;
@@ -1296,9 +1320,9 @@ html, body {
 .reward-toast {
   position: absolute;
   left: 50%;
-  top: 18%;
+  top: 12%;
   transform: translateX(-50%);
-  z-index: 14;
+  z-index: 9; /* below #over (10) so settlement score stays readable */
   max-width: min(88vw, 300px);
   padding: 10px 16px;
   border-radius: 999px;
@@ -1432,4 +1456,120 @@ html, body {
 #app[data-theme="plane"] #overlay,
 #app[data-theme="plane"] #over {
   background: radial-gradient(ellipse at 50% 20%, rgba(30, 80, 160, 0.55), rgba(8, 16, 36, 0.82));
+}
+
+
+/* —— playfix1: title slim / brave / props / coach / 七牛槽 —— */
+.more-panel {
+  margin: 12px 0 0;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid #d8e0ea;
+  background: #f8fafc;
+}
+.more-panel > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #334155;
+  text-align: center;
+  user-select: none;
+}
+.more-panel > summary::-webkit-details-marker { display: none; }
+.more-panel[open] > summary {
+  border-bottom: 1px solid #e2e8f0;
+}
+.more-body {
+  padding: 10px 12px 12px;
+}
+#overlay .card {
+  padding: 20px 18px 18px;
+}
+#overlay .card h1 { font-size: 26px; margin-bottom: 4px; }
+#overlay .hint { margin-bottom: 10px; }
+#hero-pick { margin-bottom: 10px; }
+#mode-pick { margin-bottom: 12px; gap: 8px; }
+.mode-card { padding: 8px 6px 8px; }
+.mode-desc { font-size: 10px; }
+#btn-start { margin-top: 4px; }
+
+.brave-pill.hot {
+  box-shadow: 0 0 0 2px rgba(253, 230, 138, 0.55);
+}
+.brave-pill.hidden { display: none; }
+
+.coach-strip {
+  position: absolute;
+  left: 50%;
+  top: max(58px, calc(env(safe-area-inset-top) + 52px));
+  transform: translateX(-50%);
+  z-index: 7;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fde68a;
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.coach-strip.hidden { display: none; }
+
+#touch-layer {
+  grid-template-columns: 0.85fr 1fr 0.85fr 0.7fr;
+}
+#touch-layer.props-open {
+  grid-template-columns: 0.7fr 0.85fr 0.7fr 0.55fr 0.55fr 0.55fr 0.55fr;
+}
+.touch-btn.props {
+  background: linear-gradient(180deg, rgba(148,163,184,0.55), rgba(71,85,105,0.75));
+  font-size: 15px;
+}
+.touch-btn.props.open {
+  box-shadow: 0 0 0 2px rgba(253,230,138,0.5);
+}
+.touch-btn.prop-extra.hidden { display: none; }
+#touch-layer.plane-mode .touch-btn.jump.hidden { display: none; }
+#touch-layer.plane-mode {
+  grid-template-columns: 0.9fr 0.9fr 0.7fr;
+}
+#touch-layer.plane-mode.props-open {
+  grid-template-columns: 0.75fr 0.75fr 0.55fr 0.55fr 0.55fr 0.55fr;
+}
+
+/* 七牛🐮 promo slot */
+.ad-slot {
+  background: linear-gradient(135deg, rgba(0, 168, 112, 0.10), rgba(56, 189, 248, 0.10));
+  border: 1px solid rgba(0, 168, 112, 0.35);
+}
+.ad-slot-badge {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.22);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+.ad-slot-placeholder {
+  color: #334155;
+  font-size: 12px;
+}
+#over-line-brave { color: #b45309; font-weight: 600; }
+
+
+/* Settlement score must not be covered by reward toast */
+#app:has(#over.show-over) #reward-toast,
+#over.show-over ~ #reward-toast {
+  display: none !important;
+}
+
+#app[data-theme="plane"] .touch-btn.jump {
+  display: none !important;
+}
+.touch-btn.boost .boost-count,
+.touch-btn.invuln .invuln-count {
+  font-size: 11px;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
 }

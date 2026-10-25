@@ -34,6 +34,13 @@
   const hudBoost = document.getElementById("hud-boost");
   const hudLabelBoost = document.getElementById("hud-label-boost");
   const hudBoostPill = document.getElementById("hud-boost-pill");
+  const hudBrave = document.getElementById("hud-brave");
+  const hudBravePill = document.getElementById("hud-brave-pill");
+  const btnProps = document.getElementById("btn-props");
+  const coachEl = document.getElementById("coach-strip");
+  const btnCopyChallenge = document.getElementById("btn-copy-challenge");
+  const overBraveEl = document.getElementById("over-brave");
+  const overMultEl = document.getElementById("over-mult");
   const modePick = document.getElementById("mode-pick");
   const titleSlogan = document.getElementById("title-slogan");
   const titleHeading = document.getElementById("title-heading");
@@ -77,7 +84,7 @@
   /** Scale up cow/obstacles so they still fill wider lanes. */
   const ROAD_SCALE = 1.18;
   const INVULN_CHARGES = 3;
-  const INVULN_DURATION = 10;
+  const INVULN_DURATION = 3;
   /** Short-burst boost (all maps): tap, not hold. */
   const BOOST_CHARGES = 3;
   const BOOST_DURATION = 1.0;
@@ -90,13 +97,17 @@
   const REWARD_AD_DURATION = 2.0;
   const REWARD_AD_INVULN = 1.8;
   const REWARD_AD_SHIELD = 3.0;
-  /** Consecutive ad skips without completing → force #over (raise H). */
-  const REWARD_SKIP_FORCE_OVER = 2;
+  /** Max rewarded continues per run; 2nd hit or 认栽 → #over. */
+  const REWARD_CONTINUE_MAX = 1;
   /** Near-miss graze window (adjacent lane / lateral miss). */
   const GRAZE_Z_MIN = 0.66;
   const GRAZE_Z_MAX = 0.88;
+  /** Legacy near-miss flat pts (unused when brave stacks drive score). Kept for toast clarity. */
   const NEAR_MISS_SCORE = 8;
-  const NEAR_MISS_COIN = 1;
+  const NEAR_MISS_COIN = 0;
+  const BRAVE_STACKS_CAP = 9;
+  const LS_COACH = "rb_coach_v1";
+  const LS_PROPS = "rb_props_unlocked_v1";
   /** 悬空: tighter vanish + wider near for stronger corridor taper. */
   const ROAD_HALF_FAR_SPACE = 0.065;
   const ROAD_HALF_NEAR_SPACE = 0.54;
@@ -301,6 +312,7 @@
   let distance = 0;
   let coins = 0;
   let score = 0;
+  let braveStacks = 0;
   let bombCd = 0;
   let invulnCharges = INVULN_CHARGES;
   let invulnT = 0;
@@ -349,9 +361,15 @@
   let pendingHitObstacle = null;
   let rewardToastT = 0;
   let rewardAdToken = 0;
-  /** Skips without a completed ad this run; ≥ REWARD_SKIP_FORCE_OVER → over. */
+  /** Rewarded continues used this run; ≥ REWARD_CONTINUE_MAX → next hit is fatal. */
+  let rewardContinueUsed = 0;
   let rewardSkipStreak = 0;
   let nearMissCd = 0;
+  let propsTrayOpen = false;
+  let propsUnlocked = false;
+  try { propsUnlocked = localStorage.getItem(LS_PROPS) === "1"; } catch (e) {}
+  let coachDismissed = false;
+  try { coachDismissed = localStorage.getItem(LS_COACH) === "1"; } catch (e) {}
   let coinPulseT = 0;
   let landDustT = 0;
 
@@ -626,12 +644,25 @@
     return list.slice(0, max);
   }
 
+  function braveMultiplier() {
+    return 1 + Math.min(BRAVE_STACKS_CAP, Math.max(0, braveStacks));
+  }
+
   function computeScore() {
     if (mode === "chill") {
-      // Primary: survival time. Coins are a small bonus only.
+      // Primary: survival time. Coins are a small bonus only. No brave mult.
       return Math.floor(sessionPlaySec * CHILL_TIME_PTS) + coins * CHILL_COIN_BONUS;
     }
-    return Math.floor(distance) + coins * 10;
+    // Design: floor(distance) * braveMultiplier + coins*10
+    return Math.floor(distance) * braveMultiplier() + coins * 10;
+  }
+
+  function softVibrate(ms) {
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+        navigator.vibrate(ms || 12);
+      }
+    } catch (e) {}
   }
 
   function recordRun(finalScore, playSec) {
@@ -962,12 +993,12 @@
     if (modeHint) {
       modeHint.textContent =
         mode === "plant"
-          ? "已选植物跑酷 · 点「开始植物跑酷」或再点🌻开跑；🍒=清道10秒"
+          ? "已选 · 再点卡片或下方按钮开跑；🍒=清道10秒"
           : mode === "forest"
-            ? "已选优美森林 · 背对冲刺 · 道边树影（键6）"
+            ? "已选优美森林 · 再点卡片开跑 · 背对冲刺（键6）"
             : mode === "plane"
-              ? "已选飞机大战 · 默认扫射 · X后喷 · 小怪3血大怪10血（键0）"
-              : "选地图 · 点下方卡片（手机无需键盘）";
+              ? "已选飞机大战 · 再点卡片开跑 · 默认扫射（键0）"
+              : "选地图 · 再点已选卡片也可开跑";
     }
     if (btnStart) {
       btnStart.textContent =
@@ -1021,6 +1052,13 @@
             : "丢炸弹"
       );
     }
+    if (btnJump && mode === "plane") {
+      btnJump.textContent = "扫";
+    } else if (btnJump) {
+      btnJump.textContent = "跳";
+    }
+    syncPlaneControls();
+    syncPropsTray();
   }
 
   function resize() {
@@ -1121,9 +1159,16 @@
     distance = 0;
     coins = 0;
     score = 0;
+    braveStacks = 0;
+    rewardContinueUsed = 0;
+    rewardSkipStreak = 0;
     bombCd = 0;
     invulnCharges = INVULN_CHARGES;
     invulnT = 0;
+    boostCharges = BOOST_CHARGES;
+    boostT = 0;
+    boostCd = 0;
+    boostLockT = 0;
     spawnAcc = 1.1;
     coinAcc = 0.2;
     runPhase = 0;
@@ -1149,7 +1194,8 @@
     rewardAdT = 0;
     pendingHitObstacle = null;
     rewardToastT = 0;
-    rewardSkipStreak = 0;
+    rewardContinueUsed = 0;
+    braveStacks = 0;
     nearMissCd = 0;
     rewardAdToken += 1;
     hideRewardedAd();
@@ -1178,6 +1224,7 @@
       btnBomb.classList.remove("cooling");
     }
     syncInvulnUi();
+    syncBoostUi();
     updateHud();
   }
 
@@ -1188,6 +1235,7 @@
     rewardAdPhase = null;
     rewardAdT = 0;
     pendingHitObstacle = null;
+    rewardContinueUsed = 0;
     rewardSkipStreak = 0;
     nearMissCd = 0;
     rewardAdToken += 1;
@@ -1208,8 +1256,19 @@
     }
     hudCoins.textContent = String(coins);
     hudScore.textContent = String(score);
+    if (hudBrave) {
+      const m = braveMultiplier();
+      hudBrave.textContent = mode === "chill" ? "—" : "×" + m;
+    }
+    if (hudBravePill) {
+      hudBravePill.classList.toggle("hidden", mode === "chill");
+      hudBravePill.classList.toggle("hot", braveStacks > 0 && mode !== "chill");
+    }
     syncInvulnUi();
     syncBoostUi();
+    syncPropsTray();
+    syncCoach();
+    syncPlaneControls();
   }
 
   function isRewardedAdOpen() {
@@ -1258,8 +1317,8 @@
     if (invulnCharges <= 0) return;
     invulnCharges -= 1;
     invulnT = INVULN_DURATION;
-    flashT = Math.max(flashT, 0.35);
-    shakeT = Math.max(shakeT, 0.22);
+    flashT = Math.max(flashT, 0.12);
+    shakeT = Math.max(shakeT, 0.1);
     // golden burst around cow
     burst(player.lane, 0.78, "rgba(255,220,80,0.9)", 18);
     spawnFloatText(player.lane, 0.78, "无敌!", "#ffe566");
@@ -1325,8 +1384,8 @@
     boostCharges -= 1;
     boostT = BOOST_DURATION;
     boostLockT = BOOST_LOCK;
-    flashT = Math.max(flashT, 0.22);
-    shakeT = Math.max(shakeT, 0.12);
+    flashT = Math.max(flashT, 0.06);
+    shakeT = Math.max(shakeT, 0.04);
     const label = mode === "plane" ? "后喷!" : "加速!";
     const col = mode === "plane" ? "#7ec8ff" : "#ffcc44";
     burst(player.lane, 0.78, mode === "plane" ? "rgba(120,200,255,0.9)" : "rgba(255,180,60,0.9)", 14);
@@ -1361,6 +1420,7 @@
     // During boost: softer snap so ×1.45 does not feel floaty.
     const snap = isBoosting() ? BOOST_LANE_SNAP : LANE_SNAP;
     player.displayLane += (player.lane - player.displayLane) * snap;
+    markCoachProgress("lane");
   }
 
   function jump() {
@@ -1379,6 +1439,7 @@
     player.jumpT = 0;
     player.jumpBuffered = 0;
     player.landGrace = 0;
+    markCoachProgress("jump");
   }
 
   function isJumpClearing() {
@@ -1929,6 +1990,13 @@
     }
     if (rewardedAdCompleteBtn) {
       rewardedAdCompleteBtn.disabled = true;
+      rewardedAdCompleteBtn.classList.add("is-locked");
+      rewardedAdCompleteBtn.setAttribute("aria-disabled", "true");
+      if (rewardedAdCompleteBtn._autoTimer) {
+        clearTimeout(rewardedAdCompleteBtn._autoTimer);
+        rewardedAdCompleteBtn._autoTimer = null;
+      }
+      rewardedAdCompleteBtn._autoArmed = false;
     }
     if (rewardedAdCountdown) rewardedAdCountdown.textContent = "2.0s";
     if (rewardedAdTitle) rewardedAdTitle.textContent = "撞到了！";
@@ -1967,25 +2035,26 @@
       rewardedAdCountdown.textContent = left.toFixed(1) + "s";
     }
     if (rewardedAdCompleteBtn) {
-      rewardedAdCompleteBtn.disabled = left > 0.02;
+      const locked = left > 0.02;
+      rewardedAdCompleteBtn.disabled = locked;
+      rewardedAdCompleteBtn.classList.toggle("is-locked", locked);
+      rewardedAdCompleteBtn.setAttribute("aria-disabled", locked ? "true" : "false");
+      rewardedAdCompleteBtn.title = locked ? "倒计时结束后才能点「看完」" : "看完广告，越过障碍继续跑";
     }
   }
 
   function setRewardedHitCopy(skippedOnce) {
     if (rewardedAdTitle) rewardedAdTitle.textContent = "撞到了！";
-    if (skippedOnce) {
-      if (rewardedAdHint) {
-        rewardedAdHint.textContent = "再点「认栽结算」结束本局，或看完继续跑";
-      }
-      if (rewardedAdSkipBtn) {
+    if (rewardedAdHint) {
+      rewardedAdHint.textContent = skippedOnce
+        ? "已跳过一次 · 再点跳过 / 认栽将结算；看完仍可续跑"
+        : "倒计时结束后点「看完」续跑 · 跳过可取消自动 · 本局仅 1 次续跑";
+    }
+    if (rewardedAdSkipBtn) {
+      if (skippedOnce) {
         rewardedAdSkipBtn.textContent = "认栽结算";
         rewardedAdSkipBtn.classList.add("danger");
-      }
-    } else {
-      if (rewardedAdHint) {
-        rewardedAdHint.textContent = "撞到了！看完广告越过障碍";
-      }
-      if (rewardedAdSkipBtn) {
+      } else {
         rewardedAdSkipBtn.textContent = "跳过";
         rewardedAdSkipBtn.classList.remove("danger");
       }
@@ -2003,11 +2072,15 @@
     const token = ++rewardAdToken;
     rewardAdPhase = "watching";
     rewardAdT = REWARD_AD_DURATION;
+    rewardSkipStreak = 0;
     if (rewardedAdEl) {
       rewardedAdEl.classList.remove("hidden");
       rewardedAdEl.classList.add("show-ad");
     }
-    if (rewardedAdCompleteBtn) rewardedAdCompleteBtn._autoArmed = false;
+    if (rewardedAdCompleteBtn) {
+      rewardedAdCompleteBtn._autoArmed = false;
+      rewardedAdCompleteBtn._autoTimer = null;
+    }
     setRewardedHitCopy(false);
     syncRewardedAdUi();
 
@@ -2135,8 +2208,9 @@
   };
 
   function grantRewardAdProp() {
-    // Alternate-ish: shield 3s or one-lane clear ahead.
-    const useShield = Math.random() < 0.55;
+    // Prefer clear-lane when already invulnerable — never stack full i-frame.
+    const alreadySafe = invulnT > 0.2;
+    const useShield = !alreadySafe && Math.random() < 0.55;
     if (useShield) {
       invulnT = Math.max(invulnT, REWARD_AD_SHIELD);
       showRewardToast("护盾 ×3s");
@@ -2159,42 +2233,62 @@
     hideRewardedAd();
     rewardAdPhase = null;
     rewardAdT = 0;
-    rewardSkipStreak = 0; // completed ad clears skip streak
-    invulnT = Math.max(invulnT, REWARD_AD_INVULN);
+    rewardContinueUsed += 1; // one continue consumed
+    rewardSkipStreak = 0;
+    // Brief pass i-frame only if not already shielded — no full stack.
+    if (invulnT <= 0.05) invulnT = REWARD_AD_INVULN;
     grantRewardAdProp();
     spawnFloatText(player.lane, 0.78, "继续跑", "#c4b5fd");
     syncInvulnUi();
   }
 
-  /** Skip path → settlement after N skips without completing an ad. */
+  /** Skip / 认栽 → immediate settlement (max 1 continue per run). */
   function forceSettlementFromAd() {
+    cancelRewardedAdAutoTimer();
     hideRewardedAd();
     rewardAdPhase = null;
     rewardAdT = 0;
+    rewardSkipStreak = 0;
     pendingHitObstacle = null;
     rewardAdToken += 1;
     showRewardToast("认栽结算");
+    softVibrate(40);
     gameOver();
   }
 
+  function cancelRewardedAdAutoTimer() {
+    if (rewardedAdCompleteBtn) {
+      if (rewardedAdCompleteBtn._autoTimer) {
+        clearTimeout(rewardedAdCompleteBtn._autoTimer);
+        rewardedAdCompleteBtn._autoTimer = null;
+      }
+      rewardedAdCompleteBtn._autoArmed = false;
+    }
+  }
+
   function onRewardedAdSkipped() {
-    // Stay paused; obstacle remains. First skip nudges; second forces #over.
+    if (rewardAdPhase !== "watching") return;
+    cancelRewardedAdAutoTimer();
     rewardSkipStreak += 1;
-    if (rewardSkipStreak >= REWARD_SKIP_FORCE_OVER) {
+    if (rewardSkipStreak >= 2) {
       forceSettlementFromAd();
       return;
     }
+    // First skip: stay paused on ad; user must click 看完 to resume.
     setRewardedHitCopy(true);
-    if (rewardedAdHint) {
-      /* already set by setRewardedHitCopy */
-    }
-    showRewardToast("需看完才能通过 · 再点结算");
-    // Keep rewardAdPhase = "watching"; do not clear pendingHitObstacle.
+    showRewardToast("已跳过 · 再点将结算");
+    softVibrate(18);
   }
 
-  /** Soft hit: no Game Over — rewarded ad mock; complete → pass + prop. */
+  /** Soft hit: at most one rewarded continue; 2nd hit → #over. */
   function triggerRewardedAd(e) {
     if (isRewardedAdOpen() || deathFx || dead) return;
+    softVibrate(28);
+    if (rewardContinueUsed >= REWARD_CONTINUE_MAX) {
+      if (e) e.alive = false;
+      gameOver();
+      return;
+    }
     pendingHitObstacle = e || null;
     shakeT = Math.max(shakeT, 0.32);
     flashT = Math.max(flashT, 0.22);
@@ -2231,12 +2325,17 @@
       if (!adjacent && !lateralMiss) continue;
       e.nearMissed = true;
       nearMissCd = 0.55;
+      // Adjacent / lateral stacks only — no easy +coin (NEAR_MISS_COIN=0).
+      if (braveStacks < BRAVE_STACKS_CAP) braveStacks += 1;
       const tag = Math.random() < 0.5 ? "擦边!" : "勇敢!";
-      spawnFloatText(e.lane, Math.min(0.82, e.z), tag, "#fde68a");
-      coins += NEAR_MISS_COIN;
-      const pts = NEAR_MISS_COIN * 10;
-      showRewardToast(tag + " +" + pts);
-      burst(e.lane, e.z, "rgba(253,230,138,0.7)", 8);
+      // Float beside the player, not on the obstacle.
+      spawnFloatText(player.lane, 0.78, tag, "#fde68a");
+      if (NEAR_MISS_COIN > 0) coins += NEAR_MISS_COIN;
+      const mult = braveMultiplier();
+      // No reward toast here — keeps HUD / #over clear; float is enough.
+      softVibrate(18);
+      burst(player.lane, 0.78, "rgba(253,230,138,0.55)", 6);
+      markCoachProgress("lane");
       updateHud();
       return;
     }
@@ -2260,11 +2359,15 @@
   }
 
   function showGameOverCard() {
+    hideRewardToast();
     score = computeScore();
+    const mult = braveMultiplier();
     document.getElementById("over-dist").textContent =
       mode === "chill" ? formatTime(sessionPlaySec) : String(Math.floor(distance));
     document.getElementById("over-coins").textContent = String(coins);
     document.getElementById("over-score").textContent = String(score);
+    if (overBraveEl) overBraveEl.textContent = String(braveStacks);
+    if (overMultEl) overMultEl.textContent = "×" + mult;
     if (overPlaytimeEl) overPlaytimeEl.textContent = formatTime(sessionPlaySec);
     const distLine = document.getElementById("over-line-dist");
     if (distLine) {
@@ -2284,16 +2387,34 @@
           "</strong>";
       }
     }
+    const braveLine = document.getElementById("over-line-brave");
+    if (braveLine) {
+      if (mode === "chill") {
+        braveLine.classList.add("hidden");
+      } else {
+        braveLine.classList.remove("hidden");
+        braveLine.innerHTML =
+          "勇敢层 <strong id=\"over-brave\">" +
+          braveStacks +
+          "</strong> · 倍率 <strong id=\"over-mult\">×" +
+          mult +
+          "</strong>";
+      }
+    }
     if (overLineScore) {
       overLineScore.innerHTML =
-        (mode === "chill" ? "时长积分 " : "得分 ") +
+        (mode === "chill" ? "时长积分 " : "最终分 ") +
         "<strong id=\"over-score\">" +
         score +
         "</strong>" +
         (mode === "chill"
           ? " <span class=\"score-hint\">（秒×10 + 金币）</span>"
-          : "");
+          : " <span class=\"score-hint\">（距离×倍率 + 币×10）</span>");
     }
+    // Unlock props tray after first death this device.
+    propsUnlocked = true;
+    try { localStorage.setItem(LS_PROPS, "1"); } catch (e) {}
+    syncPropsTray();
     if (overLineTime) {
       overLineTime.classList.toggle("hidden", mode === "chill"); // already shown as 存活
     }
@@ -2382,17 +2503,9 @@
       if (rewardAdPhase === "watching" && rewardAdT > 0) {
         rewardAdT = Math.max(0, rewardAdT - dt);
         syncRewardedAdUi();
-        // Auto-enable; optional auto-complete after countdown hits 0.
-        if (rewardAdT <= 0 && rewardedAdCompleteBtn && !rewardedAdCompleteBtn._autoArmed) {
-          rewardedAdCompleteBtn._autoArmed = true;
-          // leave click to user or fire shortly
-          setTimeout(function () {
-            if (rewardAdPhase === "watching" && rewardAdT <= 0) {
-              if (rewardedAdCompleteBtn) rewardedAdCompleteBtn._autoArmed = false;
-              finishRewardedAdSuccess();
-            }
-          }, 180);
-        }
+        // Countdown only enables 「看完」— never auto-success. World stays paused.
+      } else if (rewardAdPhase === "watching" && rewardAdT <= 0) {
+        syncRewardedAdUi();
       }
       return;
     }
@@ -2636,14 +2749,25 @@
       if (s.z < 0) continue;
       const p = project(s.lane, Math.max(0, Math.min(1, s.z)), vw, vh);
       const img = planeImgs.bullet;
-      const sz = 18 * p.scale;
+      const sz = 14 * p.scale;
+      // Cyan laser bolt — avoid gold disc that reads as a coin.
+      ctx.save();
+      ctx.fillStyle = "#67e8f9";
+      ctx.shadowColor = "rgba(34,211,238,0.85)";
+      ctx.shadowBlur = 8 * p.scale;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 12 * p.scale, 2.2 * p.scale, 11 * p.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ecfeff";
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 12 * p.scale, 1.1 * p.scale, 7 * p.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
       if (img && img.complete && img.naturalWidth) {
-        ctx.drawImage(img, p.x - sz * 0.35, p.y - sz * 1.2, sz * 0.7, sz * 1.2);
-      } else {
-        ctx.fillStyle = "#fde047";
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y - 10 * p.scale, 4 * p.scale, 10 * p.scale, 0, 0, Math.PI * 2);
-        ctx.fill();
+        // Tint-safe: draw tiny tip only if asset exists (still laser silhouette).
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(img, p.x - sz * 0.2, p.y - sz * 1.1, sz * 0.4, sz);
+        ctx.globalAlpha = 1;
       }
     }
   }
@@ -2706,13 +2830,13 @@
     }
     ctx.closePath();
     const rg = ctx.createLinearGradient(0, vh * 0.14, 0, vh * 0.82);
-    rg.addColorStop(0, "rgba(120,180,255,0.15)");
-    rg.addColorStop(0.5, "rgba(80,140,220,0.28)");
-    rg.addColorStop(1, "rgba(40,90,160,0.4)");
+    rg.addColorStop(0, "rgba(120,180,255,0.05)");
+    rg.addColorStop(0.5, "rgba(80,140,220,0.10)");
+    rg.addColorStop(1, "rgba(40,90,160,0.16)");
     ctx.fillStyle = rg;
     ctx.fill();
-    ctx.strokeStyle = "rgba(200,230,255,0.55)";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(200,230,255,0.28)";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     // dashed center + lane lines along curve
     for (const lx of [0.25, 0.5, 0.75]) {
@@ -2737,8 +2861,8 @@
           started = true;
         } else ctx.lineTo(xx, yy);
       }
-      ctx.strokeStyle = lx === 0.5 ? "rgba(255,240,150,0.7)" : "rgba(220,240,255,0.35)";
-      ctx.lineWidth = lx === 0.5 ? 2.5 : 1.5;
+      ctx.strokeStyle = lx === 0.5 ? "rgba(255,240,150,0.32)" : "rgba(220,240,255,0.16)";
+      ctx.lineWidth = lx === 0.5 ? 1.5 : 1;
       ctx.stroke();
     }
   }
@@ -4471,9 +4595,9 @@
       py -= JUMP_HEIGHT * arc * baseScale * 0.85;
     }
     if (player.sliding) py += 10 * baseScale;
-    const scale = baseScale * 1.25;
+    const scale = baseScale * 1.45;
     const img = planeImgs.fighter;
-    const size = 72 * scale;
+    const size = 96 * scale;
     drawGroundShadow({ x: px, y: a.y + (b.y - a.y) * frac, scale: baseScale }, size * 0.4, size * 0.12);
     const bob = Math.sin(runPhase * 2) * 3 * scale;
     // Invuln aura under fighter (does not leave globalAlpha dirty)
@@ -4872,7 +4996,8 @@
   function drawBombFlash(vw, vh) {
     if (flashT <= 0) return;
     const t = flashT / 0.48;
-    const a = Math.min(1, t) * 0.62;
+    // Soften overall wash (boost/invuln use short flashT → near-invisible).
+    const a = Math.min(1, t) * (flashT < 0.15 ? 0.18 : 0.42);
     // full-screen wash
     ctx.fillStyle =
       mode === "space"
@@ -4989,7 +5114,11 @@
     if (dt > 0.05) dt = 0.05;
     update(dt);
     render();
-    requestAnimationFrame(loop);
+      // playfix1 boot UI
+  syncPropsTray();
+  syncCoach();
+  syncPlaneControls();
+  requestAnimationFrame(loop);
   }
 
   function bindPress(el, fn) {
@@ -5008,8 +5137,99 @@
   bindPress(btnBomb, fireBomb);
   bindPress(btnInvuln, activateInvuln);
   bindPress(btnBoost, activateBoost);
+  if (btnProps) bindPress(btnProps, togglePropsTray);
+  if (btnCopyChallenge) bindPress(btnCopyChallenge, copyChallengeCard);
 
-  /** Pick a mode card. Re-tapping already-selected plant starts the run (phone-friendly). */
+
+  function syncPropsTray() {
+    const extras = [btnBomb, btnBoost, btnInvuln];
+    const show = propsTrayOpen || propsUnlocked;
+    extras.forEach((el) => {
+      if (!el) return;
+      el.classList.toggle("prop-extra", true);
+      el.classList.toggle("hidden", !show);
+    });
+    if (btnProps) {
+      btnProps.setAttribute("aria-expanded", show && propsTrayOpen ? "true" : "false");
+      btnProps.classList.toggle("open", propsTrayOpen);
+      btnProps.classList.toggle("unlocked", propsUnlocked);
+    }
+    const layer = document.getElementById("touch-layer");
+    if (layer) layer.classList.toggle("props-open", show && (propsTrayOpen || propsUnlocked));
+  }
+
+  function togglePropsTray() {
+    if (!propsUnlocked) {
+      propsTrayOpen = !propsTrayOpen;
+    } else {
+      propsTrayOpen = !propsTrayOpen;
+    }
+    syncPropsTray();
+  }
+
+  function syncCoach() {
+    if (!coachEl) return;
+    const show = running && !dead && !deathFx && !coachDismissed && !isRewardedAdOpen();
+    coachEl.classList.toggle("hidden", !show);
+  }
+
+  function markCoachProgress(kind) {
+    if (coachDismissed) return;
+    coachDismissed = true;
+    try { localStorage.setItem(LS_COACH, "1"); } catch (e) {}
+    syncCoach();
+  }
+
+  function syncPlaneControls() {
+    const plane = mode === "plane";
+    if (btnJump) {
+      btnJump.classList.toggle("hidden", plane);
+      if (plane) {
+        btnJump.setAttribute("aria-label", "扫射（自动）");
+      } else {
+        btnJump.setAttribute("aria-label", "起跳");
+        if (!btnJump.textContent || btnJump.textContent.includes("扫")) btnJump.textContent = "跳";
+      }
+    }
+    const layer = document.getElementById("touch-layer");
+    if (layer) layer.classList.toggle("plane-mode", plane);
+  }
+
+  function buildChallengeCardText() {
+    const mult = braveMultiplier();
+    const link = "https://liangchaoboy.github.io/running_bull/mobile-web/?v=playfix1";
+    return (
+      "🐂 勇敢牛牛，天天跑酷\n" +
+      "我刚跑完一局，来踢馆！\n\n" +
+      "距离：" + Math.floor(distance) + "\n" +
+      "勇敢：+" + braveStacks + "（倍率 ×" + mult + "）\n" +
+      "得分：" + score + "\n\n" +
+      "死亡领悟：勇敢牛牛，不怕困难。\n\n" +
+      "试玩 / 挑战：" + link + "\n\n" +
+      "规则：贴障碍擦边才叫勇敢；最终分 = 距离 × 倍率 + 币×10。"
+    );
+  }
+
+  async function copyChallengeCard() {
+    const text = buildChallengeCardText();
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      showRewardToast("挑战卡已复制");
+    } catch (e) {
+      showRewardToast("复制失败，长按结算区自选");
+    }
+  }
+
+  /** Pick a mode card. Re-tapping already-selected map starts the run (phone-friendly). */
   let lastModePickAt = 0;
   function onModeCardPick(modeId) {
     if (!modeId) return;
@@ -5017,7 +5237,7 @@
     // Suppress duplicate click that follows pointerdown on the same gesture.
     if (now - lastModePickAt < 320) return;
     lastModePickAt = now;
-    if (modeId === "plant" && mode === "plant") {
+    if (modeId === mode) {
       resetGame();
       return;
     }

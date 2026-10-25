@@ -1,0 +1,10 @@
+// playfix1 — graze brave cap 9 (all obstacle sprites)
+
+// Replace graze block:
+//			if !grazed {
+//				grazed = true
+//				if brave < 9 {
+//					brave = brave + 1
+//				}
+//				broadcast "graze"
+//			}

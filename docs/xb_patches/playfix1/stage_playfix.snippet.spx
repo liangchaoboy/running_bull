@@ -1,0 +1,58 @@
+// playfix1 — Stage diffs (merge into stage_ad.spx)
+
+// --- var block add ---
+//	adContinue   float64
+
+// --- forever score (already present; keep) ---
+//			multiplier = 1 + brave
+//			if brave > 9 { brave = 9; multiplier = 10 }
+//			timeScore = float64(int(playTimeSec*10)) + coins
+//			if mapId == 5 {
+//				score = timeScore
+//			} else {
+//				score = distance * multiplier + coins*10
+//			}
+
+// --- ad complete branch (when adT >= 2) add ---
+//				adContinue = 1
+
+// --- onMsg "hit" replace ---
+onMsg "hit", => {
+	if running && !over && !adOn && invulnT <= 0 && !(mapId == 6 && wallT > 0) {
+		if adContinue >= 1 {
+			running = false
+			over = true
+			broadcast "gameover"
+		} else {
+			running = false
+			adOn = true
+			adSkip = false
+			adT = 0
+			inputLock = 3
+			adLine = "撞到了！\n看完广告越过障碍\n按2认栽结算"
+			broadcast "ad"
+		}
+	}
+}
+
+// --- Key2: first skip = 认栽 (tighten) ---
+onKey Key2, => {
+	if adOn {
+		// any skip / 认栽 → settle
+		adOn = false
+		adSkip = false
+		adT = 0
+		adSkipCount = 0
+		running = false
+		over = true
+		adLine = "认栽结算"
+		broadcast "ad"
+		broadcast "gameover"
+	} else if inMenu {
+		hero = 2
+		broadcast "showmenu"
+	}
+}
+
+// --- boot / menu reset ---
+//	adContinue = 0

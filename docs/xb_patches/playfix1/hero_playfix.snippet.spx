@@ -1,0 +1,19 @@
+// playfix1 — hero gameover say (cow/deer/dog)
+
+onMsg "gameover", => {
+	runAnim = false
+	setRotationStyle None
+	setHeading 90
+	setCostume "默认"
+	if hero == id {
+		if mapId == 5 {
+			say fmt.Sprintf("存活 %.0f 秒\n金币 %.0f  时长积分 %.0f\n空格重新选择", playTimeSec, coins, score), 40
+		} else if mapId == 6 {
+			say fmt.Sprintf("距离 %.0f\n勇敢层 %.0f · 倍率 ×%.0f\n阳光 %.0f  得分 %.0f\n空格重新选择", distance, brave, multiplier, coins, score), 40
+		} else {
+			say fmt.Sprintf("距离 %.0f\n勇敢层 %.0f · 倍率 ×%.0f\n金币 %.0f  得分 %.0f\n空格重新选择", distance, brave, multiplier, coins, score), 40
+		}
+	}
+}
+
+// graze toast unchanged — alternate 擦边! / 勇敢!
