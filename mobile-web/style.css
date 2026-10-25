@@ -1351,3 +1351,28 @@ html, body {
   color: #fecaca;
   background: rgba(127, 29, 29, 0.35);
 }
+
+
+/* —— 飞机大战 plane —— */
+#app[data-theme="plane"] {
+  --accent: #3b82f6;
+  --accent-soft: rgba(59, 130, 246, 0.25);
+}
+#app[data-theme="plane"] .hud-pill {
+  background: rgba(15, 40, 80, 0.72);
+  border-color: rgba(147, 197, 253, 0.35);
+}
+#app[data-theme="plane"] .touch-btn.bomb {
+  background: linear-gradient(160deg, #60a5fa, #1d4ed8);
+}
+#app[data-theme="plane"] .primary {
+  background: linear-gradient(160deg, #38bdf8, #2563eb);
+}
+.mode-card.plane.selected {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.45);
+}
+#app[data-theme="plane"] #overlay,
+#app[data-theme="plane"] #over {
+  background: radial-gradient(ellipse at 50% 20%, rgba(30, 80, 160, 0.55), rgba(8, 16, 36, 0.82));
+}

@@ -1,0 +1,64 @@
+// === PLANЕ mode additions for Stage (merge into stage_ad.spx) ===
+// mapId 7 · Key0 · auto 扫射 · curve · boot speeds
+
+// --- add next to other vars ---
+//	planeFireT   float64
+//	planeDmg     float64   // optional shared dmg pulse for enemies
+
+// --- in onStart / forever curve block: treat mapId 7 like forest ---
+// replace: if mapId == 3 && running {
+// with:
+//		if (mapId == 3 || mapId == 7) && running {
+//			curvePhase = curvePhase + 0.007
+//			...
+//			curveBend = curveBend + (math.Sin(curvePhase)*40 - curveBend)*0.05
+//		} else { ... }
+
+// --- inside forever, after plant block, add plane autofire ---
+		if running && mapId == 7 {
+			planeFireT = planeFireT + 0.02
+			if planeFireT >= 0.14 {
+				planeFireT = 0
+				peaLane = laneHome
+				broadcast "planefire"
+			}
+		}
+
+// --- Key0 (menu) ---
+onKey Key0, => {
+	if inMenu {
+		mapId = 7
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+// --- applymap clamp + backdrop ---
+// change: if mapId > 6 { mapId = 6 }  →  if mapId > 7 { mapId = 7 }
+// add branch:
+//	} else if mapId == 7 {
+//		setBackdrop "sky"
+//		setGraphicEffect ColorEffect, 22
+//		setGraphicEffect BrightnessEffect, 10
+//	}
+
+// --- boot speeds ---
+//	} else if mapId == 7 {
+//		runSpeed = 6.5
+//		gapT = 2.2
+//		planeFireT = 0
+//	}
+
+// --- bomb: mapId 7 missile (reuse bombOn; enemies subtract 5 on touch bomb lane) ---
+// in KeyB, before else:
+//		if mapId == 7 {
+//			bombCd = 1.6
+//			bombHome = laneHome
+//			bombY = heroFeet + 24
+//			bombX = bullX
+//			bombOn = true
+//			planeDmg = 5
+//			broadcast "planemissile"
+//		} else if mapId == 6 { ... cherry ... } else { ... }
+
+// spawnKind already 1..4 — PlaneEnemy: <4 small hp3, else big hp10

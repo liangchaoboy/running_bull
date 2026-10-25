@@ -1,3 +1,10 @@
+## 2026-10-25 · plane1（飞机大战跑酷 ✈️）
+
+- 新模式 **飞机大战**（mapId **7** / 键 **0** / web `plane`）：默认连续扫射；小怪 HP3、大怪 HP10；导弹 -5；航路弯道。
+- XBuilder 粘贴包：`xb_src/patches/plane/APPLY_PLANE.md`（**待 Publish**）；设计 [`XBUILDER_PLANE_MODE.md`](XBUILDER_PLANE_MODE.md)。
+- mobile-web `?v=plane1`；素材 `mobile-web/assets/plane/`（原创几何）。
+- forest / plant / feel1 激励跳过结算保持。
+
 ## 2026-10-25 · mobile-web forest1
 
 ## 2026-10-25 · feel1（抬 H / 擦边 / 撞到了 / 悬空）

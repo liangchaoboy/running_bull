@@ -1,0 +1,55 @@
+var (
+	isClone bool
+	life    float64
+	laneX   float64
+)
+
+onStart => {
+	hide
+	setSize 0.35
+	setXpos 900
+	setYpos 0
+}
+
+onMsg "planefire", => {
+	if !isClone && running && mapId == 7 {
+		clone
+	}
+}
+
+onCloned data => {
+	isClone = true
+	life = 1.1
+	laneX = peaLane
+	if laneX == 0 {
+		laneX = bullX
+	}
+	setSize 0.32
+	setXpos laneX + curveBend*0.2
+	setYpos heroFeet + 28
+	show
+	forever => {
+		if !running || over || mapId != 7 {
+			die
+		}
+		life = life - 0.02
+		changeYpos 9
+		setXpos xpos + (laneX+curveBend*0.2-xpos)*0.35
+		if touching("PlaneEnemy") || touching("障碍") || touching("Obstacle") {
+			broadcast "planedmg"
+			die
+		}
+		if ypos > 260 || life <= 0 {
+			die
+		}
+		wait 0.02
+	}
+}
+
+onMsg "reset", => {
+	if isClone {
+		die
+	} else {
+		hide
+	}
+}

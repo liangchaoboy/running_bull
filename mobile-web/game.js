@@ -92,6 +92,14 @@
   const CURVE_AMP_FOREST = 0.06;
   const CURVE_K_EARTH = 0.032;
   const CURVE_AMP_EARTH = 0.045;
+  const CURVE_K_PLANE = 0.036;
+  const CURVE_AMP_PLANE = 0.055;
+  /** 飞机大战：默认扫射间隔；小怪/大怪 HP */
+  const PLANE_FIRE_INTERVAL = 0.14;
+  const PLANE_HP_SMALL = 3;
+  const PLANE_HP_BIG = 10;
+  const PLANE_MISSILE_DMG = 5;
+  const PLANE_BIG_CHANCE = 0.25;
   const BOMB_COOLDOWN = 1.6;
   /** Longer than hit-zone dwell at start speed so a well-timed jump clears. */
   const JUMP_DURATION = 0.82;
@@ -268,7 +276,7 @@
   const LS_LB = "rb_leaderboard_v1";
   const LB_MAX = 20;
 
-  /** @type {"earth"|"space"|"chill"|"plant"|"forest"} */
+  /** @type {"earth"|"space"|"chill"|"plant"|"forest"|"plane"} */
   let mode = "earth";
 
   let dpr = 1;
@@ -342,6 +350,9 @@
   let plantPickupAcc = 2.5;
   /** @type {Array<{lane:number,z:number,life:number,kind:string}>} */
   let plantShots = [];
+  let planeShots = [];
+  let planeFireAcc = 0;
+  let planeAutoFire = true;
 
   /** HQ homage art (original cartoons — see assets/CREDITS.md). */
   const PLANT_ASSET_KEYS = [
@@ -372,6 +383,26 @@
         if (left <= 0) plantAssetsReady = true;
       };
       img.src = "assets/" + key + ".png";
+    });
+  })();
+
+  const planeImgs = {};
+  let planeAssetsReady = false;
+  (function loadPlaneAssets() {
+    const keys = ["fighter", "enemy_small", "enemy_big", "bullet"];
+    let left = keys.length;
+    keys.forEach((key) => {
+      const img = new Image();
+      img.onload = () => {
+        planeImgs[key] = img;
+        left -= 1;
+        if (left <= 0) planeAssetsReady = true;
+      };
+      img.onerror = () => {
+        left -= 1;
+        if (left <= 0) planeAssetsReady = true;
+      };
+      img.src = "assets/plane/" + key + ".png";
     });
   })();
 
@@ -857,7 +888,7 @@
   };
 
   function setMode(next) {
-    if (next !== "earth" && next !== "space" && next !== "chill" && next !== "plant" && next !== "forest") return;
+    if (next !== "earth" && next !== "space" && next !== "chill" && next !== "plant" && next !== "forest" && next !== "plane") return;
     mode = next;
     appEl.setAttribute("data-theme", mode);
     if (themeMeta) {
@@ -871,7 +902,9 @@
               ? "#5a9e3a"
               : mode === "forest"
                 ? "#3d9e5b"
-                : "#1a8cff"
+                : mode === "plane"
+                  ? "#1e5a9e"
+                  : "#1a8cff"
       );
     }
     if (modePick) {
@@ -891,7 +924,9 @@
               ? "星轨平台，水晶障碍"
               : mode === "forest"
                 ? "阳光神光 · 优美森林"
-                : "勇敢牛牛，不怕困难";
+                : mode === "plane"
+                  ? "✈️ 默认扫射 · 多击灭怪"
+                  : "勇敢牛牛，不怕困难";
     }
     if (titleHeading) {
       titleHeading.textContent =
@@ -903,7 +938,9 @@
               ? "悬空空间"
               : mode === "forest"
                 ? "优美森林"
-                : "天天跑酷";
+                : mode === "plane"
+                  ? "飞机大战"
+                  : "天天跑酷";
     }
     if (modeHint) {
       modeHint.textContent =
@@ -911,11 +948,19 @@
           ? "已选植物跑酷 · 点「开始植物跑酷」或再点🌻开跑；🍒=清道10秒"
           : mode === "forest"
             ? "已选优美森林 · 背对冲刺 · 道边树影（键6）"
-            : "选地图 · 点下方卡片（手机无需键盘）";
+            : mode === "plane"
+              ? "已选飞机大战 · 默认扫射 · 小怪3血大怪10血（键0）"
+              : "选地图 · 点下方卡片（手机无需键盘）";
     }
     if (btnStart) {
       btnStart.textContent =
-        mode === "plant" ? "▶ 开始植物跑酷" : mode === "forest" ? "▶ 开始森林跑" : "▶ 开始跑";
+        mode === "plant"
+          ? "▶ 开始植物跑酷"
+          : mode === "forest"
+            ? "▶ 开始森林跑"
+            : mode === "plane"
+              ? "▶ 开始飞机大战"
+              : "▶ 开始跑";
     }
     applyHudLabels();
     syncHeroPick();
@@ -946,13 +991,17 @@
     const plant = mode === "plant";
     if (hudLabelDist) hudLabelDist.textContent = chill ? "时长" : "距离";
     if (hudLabelScore) hudLabelScore.textContent = chill ? "时长积分" : "得分";
-    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : plant ? "🌻" : mode === "forest" ? "🌲" : "🏁";
-    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : plant ? "🧟" : mode === "forest" ? "☀️" : "⭐";
+    if (hudIcoDist) hudIcoDist.textContent = chill ? "⏱️" : plant ? "🌻" : mode === "forest" ? "🌲" : mode === "plane" ? "✈️" : "🏁";
+    if (hudIcoScore) hudIcoScore.textContent = chill ? "🧘" : plant ? "🧟" : mode === "forest" ? "☀️" : mode === "plane" ? "👾" : "⭐";
     if (btnBomb) {
-      btnBomb.textContent = plant ? "🍒" : "💣";
+      btnBomb.textContent = plant ? "🍒" : mode === "plane" ? "🚀" : "💣";
       btnBomb.setAttribute(
         "aria-label",
-        plant ? "樱桃炸弹：当前道连续清障 10 秒" : "丢炸弹"
+        plant
+          ? "樱桃炸弹：当前道连续清障 10 秒"
+          : mode === "plane"
+            ? "导弹：当前道敌人 -5 HP"
+            : "丢炸弹"
       );
     }
   }
@@ -977,6 +1026,9 @@
     if (mode === "forest") {
       k = CURVE_K_FOREST;
       ampFrac = CURVE_AMP_FOREST;
+    } else if (mode === "plane") {
+      k = CURVE_K_PLANE;
+      ampFrac = CURVE_AMP_PLANE;
     } else if (mode === "earth") {
       k = CURVE_K_EARTH;
       ampFrac = CURVE_AMP_EARTH;
@@ -1087,6 +1139,9 @@
     plantGatAcc = 0;
     plantPickupAcc = 2.2;
     plantShots = [];
+    planeShots = [];
+    planeFireAcc = 0;
+    planeAutoFire = true;
     overlay.classList.add("hidden");
     overlay.classList.remove("show");
     overEl.classList.add("hidden");
@@ -1290,6 +1345,86 @@
     };
   }
 
+
+  function firePlaneShot() {
+    planeShots.push({
+      lane: player.lane,
+      z: 0.74,
+      life: 0.95,
+      dmg: 1,
+    });
+  }
+
+  /** Apply damage to plane enemies in z band on a lane. Returns kills. */
+  function damageLaneEnemies(lane, zMin, zMax, dmg) {
+    let kills = 0;
+    for (const e of entities) {
+      if (!e.alive || e.kind !== "obstacle") continue;
+      if (e.lane !== lane) continue;
+      if (e.z < zMin || e.z > zMax) continue;
+      if (e.hp == null) e.hp = 1;
+      e.hp -= dmg;
+      e.hitFlash = 0.15;
+      if (e.hp <= 0) {
+        e.alive = false;
+        kills += 1;
+        const big = e.variant === "enemy_big";
+        coins += big ? 3 : 1;
+        coinPulseT = 0.3;
+        boomBurst(e.lane, e.z, big ? 1.0 : 0.5);
+        spawnBlast(e.lane, e.z, big ? 0.5 : 0.3, big ? 3 : 2);
+        spawnFloatText(e.lane, e.z, big ? "大怪击破+3" : "击破+1", big ? "#fbbf24" : "#93c5fd");
+      } else {
+        burst(e.lane, e.z, "rgba(255,220,100,0.85)", 4);
+      }
+    }
+    return kills;
+  }
+
+  function updatePlaneCombat(dt, zSpeed) {
+    if (mode !== "plane") return;
+    if (planeAutoFire) {
+      planeFireAcc -= dt;
+      if (planeFireAcc <= 0) {
+        planeFireAcc = PLANE_FIRE_INTERVAL;
+        firePlaneShot();
+      }
+    }
+    for (const s of planeShots) {
+      s.z -= zSpeed * 3.2 * dt;
+      s.life -= dt;
+      // Keep spawn lane (no follow) so strafing requires aim by lane change.
+      if (s.spent) continue;
+      for (const e of entities) {
+        if (!e.alive || e.kind !== "obstacle") continue;
+        if (e.lane !== s.lane) continue;
+        if (e.z < s.z - 0.05 || e.z > s.z + 0.1) continue;
+        // One bullet → one hit, then spent (multi-hit via many shots).
+        if (e.hp == null) e.hp = 1;
+        e.hp -= s.dmg || 1;
+        e.hitFlash = 0.15;
+        s.spent = true;
+        s.life = 0;
+        if (e.hp <= 0) {
+          e.alive = false;
+          const big = e.variant === "enemy_big";
+          coins += big ? 3 : 1;
+          coinPulseT = 0.3;
+          boomBurst(e.lane, e.z, big ? 1.0 : 0.5);
+          spawnBlast(e.lane, e.z, big ? 0.5 : 0.3, big ? 3 : 2);
+          spawnFloatText(e.lane, e.z, big ? "大怪击破+3" : "击破+1", big ? "#fbbf24" : "#93c5fd");
+        } else {
+          burst(e.lane, e.z, "rgba(255,220,100,0.85)", 4);
+        }
+        break;
+      }
+    }
+    planeShots = planeShots.filter((s) => s.life > 0 && s.z > -0.08 && !s.spent);
+    for (const e of entities) {
+      if (e.hitFlash > 0) e.hitFlash -= dt;
+    }
+  }
+
   /** Destroy obstacles on one lane in z range; coins untouched. */
   function clearLaneObstacles(lane, zMin, zMax, big) {
     const cols = bombColors();
@@ -1314,6 +1449,22 @@
   function fireBomb() {
     if (!running || dead || deathFx || isRewardedAdOpen()) return;
     if (bombCd > 0) return;
+    // 飞机大战：导弹 = 当前道敌人 -5 HP（非秒杀大怪）。
+    if (mode === "plane") {
+      bombCd = BOMB_COOLDOWN;
+      const lane = player.lane;
+      if (btnBomb) {
+        btnBomb.disabled = true;
+        btnBomb.classList.add("cooling");
+      }
+      shakeT = Math.max(shakeT, 0.35);
+      flashT = Math.max(flashT, 0.28);
+      damageLaneEnemies(lane, -0.05, 0.95, PLANE_MISSILE_DMG);
+      boomBurst(lane, 0.55, 0.85);
+      spawnBlast(lane, 0.55, 0.45, 3);
+      spawnFloatText(lane, 0.72, "导弹-5", "#fde68a");
+      return;
+    }
     // 植物跑酷：樱桃炸弹 = 当前道前方连续清障 10 秒（非一发）。
     if (mode === "plant") {
       bombCd = PLANT_BOMB_CD;
@@ -1609,6 +1760,15 @@
       if (r < 0.78) return { variant: "zombie", tall: false };
       return { variant: "zombie_tall", tall: true };
     }
+    if (mode === "plane") {
+      const big = Math.random() < PLANE_BIG_CHANCE;
+      return {
+        variant: big ? "enemy_big" : "enemy_small",
+        tall: big,
+        hp: big ? PLANE_HP_BIG : PLANE_HP_SMALL,
+        maxHp: big ? PLANE_HP_BIG : PLANE_HP_SMALL,
+      };
+    }
     const r = Math.random();
     if (r < 0.34) return { variant: "box", tall: false };
     if (r < 0.58) return { variant: "barrier", tall: false };
@@ -1638,6 +1798,8 @@
       alive: true,
       variant: v.variant,
       tall: v.tall,
+      hp: v.hp != null ? v.hp : 1,
+      maxHp: v.maxHp != null ? v.maxHp : 1,
     });
   }
 
@@ -2305,8 +2467,156 @@
     }
 
     updatePlantPowers(dt, zSpeed);
+    updatePlaneCombat(dt, zSpeed);
 
     updateHud();
+  }
+
+
+  function drawPlaneEnemy(p, e) {
+    const big = e.variant === "enemy_big";
+    const key = big ? "enemy_big" : "enemy_small";
+    const img = planeImgs[key];
+    const s = p.scale;
+    const size = (big ? 78 : 48) * s;
+    const flash = e.hitFlash > 0;
+    drawGroundShadow(p, size * 0.42, size * 0.14);
+    ctx.save();
+    if (flash) ctx.globalAlpha = 0.55 + 0.45 * Math.sin(animTime * 40);
+    const y = p.y - 6 * s;
+    if (img && img.complete && img.naturalWidth) {
+      ctx.drawImage(img, p.x - size * 0.5, y - size, size, size);
+    } else {
+      ctx.font = Math.round(size * 0.9) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(big ? "👾" : "🛸", p.x, y);
+    }
+    ctx.restore();
+    // HP bar
+    const maxHp = e.maxHp || (big ? PLANE_HP_BIG : PLANE_HP_SMALL);
+    const hp = Math.max(0, e.hp != null ? e.hp : maxHp);
+    const bw = size * 0.9;
+    const bh = Math.max(3, 4 * s);
+    const bx = p.x - bw * 0.5;
+    const by = y - size - 8 * s;
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = hp / maxHp > 0.4 ? "#4ade80" : "#f87171";
+    ctx.fillRect(bx, by, bw * (hp / maxHp), bh);
+  }
+
+  function drawPlaneShots(vw, vh) {
+    if (mode !== "plane") return;
+    for (const s of planeShots) {
+      if (s.z < 0) continue;
+      const p = project(s.lane, Math.max(0, Math.min(1, s.z)), vw, vh);
+      const img = planeImgs.bullet;
+      const sz = 18 * p.scale;
+      if (img && img.complete && img.naturalWidth) {
+        ctx.drawImage(img, p.x - sz * 0.35, p.y - sz * 1.2, sz * 0.7, sz * 1.2);
+      } else {
+        ctx.fillStyle = "#fde047";
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - 10 * p.scale, 4 * p.scale, 10 * p.scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function drawSkyPlane(vw, vh) {
+    const g = ctx.createLinearGradient(0, 0, 0, vh);
+    g.addColorStop(0, "#0b1d3a");
+    g.addColorStop(0.35, "#1a4a8c");
+    g.addColorStop(0.7, "#3d7ec4");
+    g.addColorStop(1, "#7eb6e8");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, vw, vh);
+    // sun
+    const sx = vw * 0.78;
+    const sy = vh * 0.12;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, vw * 0.2);
+    halo.addColorStop(0, "rgba(255,220,120,0.55)");
+    halo.addColorStop(1, "rgba(255,220,120,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sx, sy, vw * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffe566";
+    ctx.beginPath();
+    ctx.arc(sx, sy, vw * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    const cloudOff = (roadScroll * 0.06) % (vw * 1.8);
+    drawCloud(vw * 0.2 - cloudOff * 0.25, vh * 0.16, vw * 0.14, 0.5);
+    drawCloud(vw * 0.6 + cloudOff * 0.15, vh * 0.1, vw * 0.18, 0.4);
+    drawCloud(vw * 0.9 - cloudOff * 0.2, vh * 0.22, vw * 0.11, 0.35);
+  }
+
+  function drawRoadPlane(vw, vh) {
+    // Sky highway: translucent curved corridor
+    const steps = 18;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const z = i / steps;
+      const { x, y } = (function () {
+        const horizonY = vh * 0.14;
+        const nearY = vh * 0.82;
+        const yy = horizonY + (nearY - horizonY) * z;
+        const rh = roadHalfPair();
+        const half = vw * rh.far + (vw * rh.near - vw * rh.far) * z;
+        const cx = vw * 0.5 + curveDx(z, vw);
+        return { x: cx - half, y: yy };
+      })();
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    for (let i = steps; i >= 0; i--) {
+      const z = i / steps;
+      const horizonY = vh * 0.14;
+      const nearY = vh * 0.82;
+      const yy = horizonY + (nearY - horizonY) * z;
+      const rh = roadHalfPair();
+      const half = vw * rh.far + (vw * rh.near - vw * rh.far) * z;
+      const cx = vw * 0.5 + curveDx(z, vw);
+      ctx.lineTo(cx + half, yy);
+    }
+    ctx.closePath();
+    const rg = ctx.createLinearGradient(0, vh * 0.14, 0, vh * 0.82);
+    rg.addColorStop(0, "rgba(120,180,255,0.15)");
+    rg.addColorStop(0.5, "rgba(80,140,220,0.28)");
+    rg.addColorStop(1, "rgba(40,90,160,0.4)");
+    ctx.fillStyle = rg;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(200,230,255,0.55)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // dashed center + lane lines along curve
+    for (const lx of [0.25, 0.5, 0.75]) {
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= 24; i++) {
+        const z = i / 24;
+        const dashOn = Math.floor((z * 20 + roadScroll * 0.02) % 2) === 0;
+        if (!dashOn && lx === 0.5) {
+          started = false;
+          continue;
+        }
+        const horizonY = vh * 0.14;
+        const nearY = vh * 0.82;
+        const yy = horizonY + (nearY - horizonY) * z;
+        const rh = roadHalfPair();
+        const half = vw * rh.far + (vw * rh.near - vw * rh.far) * z;
+        const cx = vw * 0.5 + curveDx(z, vw);
+        const xx = cx + (lx - 0.5) * 2 * half;
+        if (!started) {
+          ctx.moveTo(xx, yy);
+          started = true;
+        } else ctx.lineTo(xx, yy);
+      }
+      ctx.strokeStyle = lx === 0.5 ? "rgba(255,240,150,0.7)" : "rgba(220,240,255,0.35)";
+      ctx.lineWidth = lx === 0.5 ? 2.5 : 1.5;
+      ctx.stroke();
+    }
   }
 
   function drawSkyEarth(vw, vh) {
@@ -3064,6 +3374,10 @@
     const v = e.variant || (mode === "space" ? "crystal" : "box");
     if (mode === "plant") {
       drawZombieObstacle(p, v === "zombie_tall");
+      return;
+    }
+    if (mode === "plane") {
+      drawPlaneEnemy(p, e);
       return;
     }
     if (mode === "space") {
@@ -3942,6 +4256,10 @@
   }
 
   function drawPlayer(vw, vh) {
+    if (mode === "plane") {
+      drawPlayerPlane(vw, vh);
+      return;
+    }
     const laneF = player.displayLane;
     const lane0 = Math.floor(laneF);
     const lane1 = Math.min(LANES - 1, lane0 + 1);
@@ -4011,6 +4329,51 @@
   /** Rear ¾ run cycle from assets/forest/{bull,deer,dog}_0..4.png — no side rotate.
    *  Used in all modes (earth/forest/space/chill/plant) when char assets load.
    *  Synced to XB: lock rotation, bob~10 on plant, size pulse 1.04/0.99. */
+  function drawPlayerPlane(vw, vh) {
+    const lane = player.displayLane;
+    const z = 0.78;
+    const p = project(lane, z, vw, vh);
+    let py = p.y;
+    if (player.jumping) {
+      const t = player.jumpT / JUMP_DURATION;
+      const arc = Math.sin(Math.PI * Math.min(1, t));
+      py -= JUMP_HEIGHT * arc * p.scale * 0.85;
+    }
+    if (player.sliding) py += 10 * p.scale;
+    const scale = p.scale * 1.15;
+    const img = planeImgs.fighter;
+    const size = 64 * scale;
+    drawGroundShadow({ x: p.x, y: p.y, scale: p.scale }, size * 0.4, size * 0.12);
+    const bob = Math.sin(runPhase * 2) * 3 * scale;
+    ctx.save();
+    ctx.translate(p.x, py - bob);
+    const lean = (player.lane - player.displayLane) * 0.35;
+    ctx.rotate(lean);
+    if (img && img.complete && img.naturalWidth) {
+      ctx.drawImage(img, -size * 0.5, -size * 0.85, size, size);
+    } else {
+      ctx.font = Math.round(size * 0.85) + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("✈️", 0, -size * 0.3);
+    }
+    // muzzle flash
+    if (planeAutoFire && running) {
+      const flick = (animTime % PLANE_FIRE_INTERVAL) < 0.05;
+      if (flick) {
+        ctx.fillStyle = "rgba(255,240,120,0.9)";
+        ctx.beginPath();
+        ctx.arc(0, -size * 0.9, 6 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    // tiny hero badge
+    ctx.font = Math.round(14 * scale) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(heroKind === "deer" ? "🦌" : heroKind === "dog" ? "🐕" : "🐂", p.x, py + 8 * scale);
+  }
+
   function drawPlayerRear(x, py, scale, stretch) {
     const kind = heroKind || "bull";
     let frame = 0;
@@ -4443,6 +4806,9 @@
     } else if (mode === "forest") {
       drawSkyForest(vw, vh);
       drawRoadForest(vw, vh);
+    } else if (mode === "plane") {
+      drawSkyPlane(vw, vh);
+      drawRoadPlane(vw, vh);
     } else {
       drawSkyEarth(vw, vh);
       drawRoadEarth(vw, vh);
@@ -4453,6 +4819,7 @@
     drawBlasts(vw, vh);
     drawBombs(vw, vh);
     drawPlantShots(vw, vh);
+    drawPlaneShots(vw, vh);
     drawPlayer(vw, vh);
     drawActivePlantHud(vw, vh);
     drawParticles();
@@ -4715,6 +5082,9 @@
         break;
       case "9":
         if (!running) setMode("plant");
+        break;
+      case "0":
+        if (!running) setMode("plane");
         break;
       case "1":
         if (!running) setHero("bull");

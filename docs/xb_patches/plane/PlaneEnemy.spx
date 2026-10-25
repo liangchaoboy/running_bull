@@ -1,0 +1,124 @@
+var (
+	isClone bool
+	hp      float64
+	maxHp   float64
+	kindBig bool
+	grazed  bool
+	yy      float64
+	zz      float64
+	laneX   float64
+	sc      float64
+	dx      float64
+)
+
+onStart => {
+	hide
+	setSize 0.4
+	setXpos 900
+	setYpos 0
+}
+
+onMsg "spawn", => {
+	if !isClone && running && mapId == 7 {
+		clone
+	}
+}
+
+onCloned data => {
+	isClone = true
+	grazed = false
+	kindBig = spawnKind >= 4
+	if kindBig {
+		hp = 10
+		maxHp = 10
+		setCostume "big"
+		setSize 0.72
+	} else {
+		hp = 3
+		maxHp = 3
+		setCostume "small"
+		setSize 0.42
+	}
+	laneX = spawnX
+	zz = 0.02
+	show
+	forever => {
+		if !running {
+			wait 0.02
+		} else if over || mapId != 7 {
+			die
+		} else {
+			zz = zz + runSpeed*0.00155
+			yy = 228 - zz*310
+			setYpos yy
+			setXpos laneX + curveBend*(0.15+zz*0.55)
+			sc = 0.22 + zz*0.55
+			if kindBig {
+				sc = 0.38 + zz*0.7
+			}
+			setSize sc
+			if zz > 0.68 && zz < 0.9 {
+				dx = xpos - bullX
+				if dx < 0 {
+					dx = -dx
+				}
+				if dx < 48 && invulnT <= 0 {
+					broadcast "hit"
+				}
+			}
+			if zz > 1.15 {
+				die
+			}
+			wait 0.02
+		}
+	}
+}
+
+onMsg "planedmg", => {
+	if isClone && running {
+		dx = xpos - bullX
+		if dx < 0 {
+			dx = -dx
+		}
+		if dx < 110 {
+			hp = hp - 1
+			if hp <= 0 {
+				if kindBig {
+					coins = coins + 3
+				} else {
+					coins = coins + 1
+				}
+				broadcast "graze"
+				die
+			}
+		}
+	}
+}
+
+onMsg "planemissile", => {
+	if isClone && running {
+		dx = xpos - bombHome
+		if dx < 0 {
+			dx = -dx
+		}
+		if dx < 80 {
+			hp = hp - 5
+			if hp <= 0 {
+				if kindBig {
+					coins = coins + 3
+				} else {
+					coins = coins + 1
+				}
+				die
+			}
+		}
+	}
+}
+
+onMsg "reset", => {
+	if isClone {
+		die
+	} else {
+		hide
+	}
+}

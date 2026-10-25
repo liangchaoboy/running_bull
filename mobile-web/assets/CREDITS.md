@@ -46,3 +46,8 @@ are official Plants vs. Zombies assets.
 
 ## Forest + rear-run
 See `forest/CREDITS.md` (Quaternius/Kenney CC0; no Glimmerwood).
+
+## plane/（飞机大战）
+
+- `fighter.png` / `enemy_small.png` / `enemy_big.png` / `bullet.png` / `sky_hint.png`
+- 原创几何像素风，非商业游戏素材。

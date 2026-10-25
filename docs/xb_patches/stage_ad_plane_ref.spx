@@ -1,0 +1,879 @@
+import "math"
+
+var (
+	distance     float64
+	brave        float64
+	multiplier   float64
+	score        float64
+	running      bool
+	over         bool
+	bullX        float64
+	bullY        float64
+	bullGrounded bool
+	runSpeed     float64
+	runT         float64
+	spawnT       float64
+	gapT         float64
+	spawned      float64
+	tight        bool
+	base         float64
+	showBrave    float64
+	spawnKind    float64
+	hero         float64
+	mapId        float64
+	inMenu       bool
+	inputLock    float64
+	feetY        float64
+	heroFeet     float64
+	spawnX       float64
+	lanePick     float64
+	coins        float64
+	coinT        float64
+	coinX        float64
+	coinBurst    float64
+	coinGap      float64
+	coinLaneX    float64
+	bombOn       bool
+	bombX        float64
+	bombY        float64
+	bombHome     float64
+	bombCd       float64
+	playTimeSec  float64
+	timeScore    float64
+	invulnCharges float64
+	invulnT      float64
+	laneHome     float64
+	sunT         float64
+	sunTick      float64
+	gatlingT    float64
+	gatlingTick float64
+	peaAuto     float64
+	peaTick     float64
+	wallT        float64
+	cherryT     float64
+	plantT       float64
+	plantKind    float64
+	plantX       float64
+	peaLane      float64
+	peaX         float64
+	peaY         float64
+	curvePhase   float64
+	curveBend    float64
+	answerI      float64
+	answerLast   float64
+	answerLine   string
+	quizOn       bool
+	quizT        float64
+	quizI        float64
+	quizAns      float64
+	quizPick     float64
+	quizResult   float64
+	quizQ        string
+	quizC1       string
+	quizC2       string
+	adOn         bool
+	adSkip       bool
+	adSkipCount  float64
+	adT          float64
+	adLine       string
+	planeFireT   float64
+)
+
+onStart => {
+    setVolume 22
+    play "草地行走", true
+	Camera.setZoom 1
+	Camera.setXYpos 0, 75
+	feetY = -90
+	heroFeet = -90
+	hero = 1
+	mapId = 1
+	inMenu = true
+	running = false
+	over = false
+	answerLast = -1
+	quizOn = false
+	adOn = false
+	adSkip = false
+	adSkipCount = 0
+	curveBend = 0
+	broadcast "applymap"
+	wait 0.25
+	broadcast "showmenu"
+	forever => {
+		if inputLock > 0 {
+			inputLock = inputLock - 0.02
+		}
+		if quizOn {
+			quizT = quizT - 0.02
+			if quizT <= 0 {
+				quizOn = false
+				quizPick = 0
+				broadcast "grade"
+			}
+		}
+		if adOn && !adSkip {
+			adT = adT + 0.02
+			if adT >= 2 {
+				adOn = false
+				adSkip = false
+				adSkipCount = 0
+				adT = 0
+				invulnT = 3
+				inputLock = 0.4
+				running = true
+				adLine = "获得护盾"
+				broadcast "ad"
+			}
+		}
+		if (mapId == 3 || mapId == 7) && running {
+			curvePhase = curvePhase + 0.007
+			if curvePhase > 6.28318 {
+				curvePhase = curvePhase - 6.28318
+			}
+			curveBend = curveBend + (math.Sin(curvePhase)*40 - curveBend)*0.05
+		} else {
+			curveBend = curveBend * 0.85
+			if curveBend < 0.4 && curveBend > -0.4 {
+				curveBend = 0
+			}
+		}
+		if running {
+			runT = runT + 0.02
+			playTimeSec = runT
+			if mapId == 5 {
+				runSpeed = 3.4 + runT*0.025
+				if runSpeed > 5 {
+					runSpeed = 5
+				}
+			} else if mapId == 6 {
+				runSpeed = 6.2 + runT*0.05
+				if runSpeed > 9 {
+					runSpeed = 9
+				}
+			} else if mapId == 7 {
+				runSpeed = 6.5 + runT*0.045
+				if runSpeed > 10 {
+					runSpeed = 10
+				}
+			} else {
+				runSpeed = 7 + runT*4/36
+				if runSpeed > 11 {
+					runSpeed = 11
+				}
+			}
+			distance = distance + runSpeed*0.035
+			multiplier = 1 + brave
+			timeScore = float64(int(playTimeSec*10)) + coins
+			if mapId == 5 {
+				score = timeScore
+			} else {
+				score = distance * multiplier + coins*10
+			}
+			spawnT = spawnT + 0.02
+			if spawnT >= gapT {
+				spawnT = 0
+				spawnKind = spawnKind + 1
+				if spawnKind > 4 {
+					spawnKind = 1
+				}
+				lanePick = rand(1, 3.999)
+				spawnX = -96
+				if lanePick >= 2 {
+					spawnX = 0
+				}
+				if lanePick >= 3 {
+					spawnX = 96
+				}
+				broadcast "spawn"
+				spawned = spawned + 1
+				if mapId == 5 {
+					base = 3.66 - spawned*0.12
+					if base < 2.47 {
+						base = 2.47
+					}
+					if tight {
+						gapT = base - 0.51
+						tight = false
+					} else {
+						gapT = base + 0.6
+						tight = true
+					}
+					if gapT < 2.04 {
+						gapT = 2.04
+					}
+					if gapT > 4.25 {
+						gapT = 4.25
+					}
+				} else if mapId == 6 {
+					base = 2.3 - spawned*0.06
+					if base < 1.5 {
+						base = 1.5
+					}
+					if tight {
+						gapT = base - 0.25
+						tight = false
+					} else {
+						gapT = base + 0.4
+						tight = true
+					}
+					if gapT < 1.3 {
+						gapT = 1.3
+					}
+					if gapT > 2.7 {
+						gapT = 2.7
+					}
+				} else {
+					base = 2.15 - spawned*0.07
+					if base < 1.45 {
+						base = 1.45
+					}
+					if tight {
+						gapT = base - 0.3
+						tight = false
+					} else {
+						gapT = base + 0.35
+						tight = true
+					}
+					if gapT < 1.2 {
+						gapT = 1.2
+					}
+					if gapT > 2.5 {
+						gapT = 2.5
+					}
+				}
+			}
+		}
+
+		if running {
+			if coinBurst > 0 {
+				coinGap = coinGap + 0.02
+				if coinGap >= 0.12 {
+					coinGap = 0
+					coinX = coinLaneX
+					broadcast "coincast"
+					coinBurst = coinBurst - 1
+				}
+			} else {
+				coinT = coinT + 0.02
+				if coinT >= 1.05 {
+					coinT = 0
+					lanePick = rand(1, 3.999)
+					coinLaneX = -96
+					if lanePick >= 2 {
+						coinLaneX = 0
+					}
+					if lanePick >= 3 {
+						coinLaneX = 96
+					}
+					coinBurst = 5
+					coinGap = 0.12
+				}
+			}
+		}
+		if bombCd > 0 {
+			bombCd = bombCd - 0.02
+		}
+		if invulnT > 0 {
+			invulnT = invulnT - 0.02
+			if invulnT < 0 {
+				invulnT = 0
+			}
+		}
+		if running && mapId == 6 {
+			if sunT > 0 {
+				sunT = sunT - 0.02
+				if sunT < 0 {
+					sunT = 0
+				}
+				sunTick = sunTick + 0.02
+				if sunTick >= 0.85 {
+					sunTick = 0
+					coins = coins + 1
+				}
+			}
+			if wallT > 0 {
+				wallT = wallT - 0.02
+				if wallT < 0 {
+					wallT = 0
+				}
+			}
+			if cherryT > 0 {
+				cherryT = cherryT - 0.02
+				if cherryT <= 0 {
+					cherryT = 0
+					bombOn = false
+				}
+			}
+			if gatlingT > 0 {
+				gatlingT = gatlingT - 0.02
+				if gatlingT < 0 {
+					gatlingT = 0
+				}
+				gatlingTick = gatlingTick + 0.02
+				if gatlingTick >= 0.18 {
+					gatlingTick = 0
+					peaLane = laneHome
+					broadcast "peafire"
+				}
+			} else if peaAuto > 0 {
+				peaAuto = peaAuto - 0.02
+				if peaAuto < 0 {
+					peaAuto = 0
+				}
+				peaTick = peaTick + 0.02
+				if peaTick >= 0.42 {
+					peaTick = 0
+					peaLane = laneHome
+					broadcast "peafire"
+				}
+			}
+			plantT = plantT + 0.02
+			if plantT >= 2.5 {
+				plantT = 0
+				plantKind = plantKind + 1
+				if plantKind > 4 {
+					plantKind = 1
+				}
+				lanePick = rand(1, 3.999)
+				plantX = -96
+				if lanePick >= 2 {
+					plantX = 0
+				}
+				if lanePick >= 3 {
+					plantX = 96
+				}
+				broadcast "plantcast"
+			}
+		}
+		if running && mapId == 7 {
+			planeFireT = planeFireT + 0.02
+			if planeFireT >= 0.14 {
+				planeFireT = 0
+				peaLane = laneHome
+				broadcast "planefire"
+			}
+		}
+		wait 0.02
+	}
+}
+
+onKey KeySpace, => {
+	if inputLock <= 0 {
+		if inMenu {
+			broadcast "boot"
+		} else if over {
+			broadcast "menu"
+		} else {
+			broadcast "jump"
+		}
+	}
+}
+
+onKey KeyLeft, => {
+	if running && inputLock <= 0 {
+		broadcast "laneLeft"
+	}
+}
+
+onKey KeyA, => {
+	if running && inputLock <= 0 {
+		broadcast "laneLeft"
+	}
+}
+
+onKey KeyRight, => {
+	if running && inputLock <= 0 {
+		broadcast "laneRight"
+	}
+}
+
+onKey KeyD, => {
+	if running && inputLock <= 0 {
+		broadcast "laneRight"
+	}
+}
+
+
+onKey KeyB, => {
+	if running && !over && bombCd <= 0 {
+		if mapId == 6 {
+			cherryT = 10
+			bombCd = 10
+			bombOn = true
+			bombHome = laneHome
+			bombX = bullX
+			bombY = heroFeet + 30
+		} else if mapId == 7 {
+			bombCd = 1.6
+			bombHome = laneHome
+			bombY = heroFeet + 24
+			bombX = bullX
+			bombOn = true
+			broadcast "planemissile"
+		} else {
+			bombCd = 1.6
+			bombHome = bullX
+			bombY = heroFeet + 24
+			bombX = bullX
+			bombOn = true
+		}
+	}
+}
+
+onKey KeyG, => {
+	if running && !over && mapId == 6 {
+		gatlingT = 8
+		gatlingTick = 0.18
+	}
+}
+
+onKey KeyP, => {
+	if running && !over && mapId == 6 {
+		peaAuto = 3.4
+		peaTick = 0.42
+	}
+}
+
+onKey KeyN, => {
+	if running && !over && mapId == 6 {
+		wallT = 5
+	}
+}
+
+onKey KeyU, => {
+	if running && !over && mapId == 6 {
+		sunT = 12
+		sunTick = 0.7
+	}
+}
+
+onKey KeyI, => {
+	if running && !over && invulnCharges > 0 && invulnT <= 0 {
+		invulnCharges = invulnCharges - 1
+		invulnT = 10
+	}
+}
+
+onKey KeyV, => {
+	if running && !over && invulnCharges > 0 && invulnT <= 0 {
+		invulnCharges = invulnCharges - 1
+		invulnT = 10
+	}
+}
+
+onKey KeyQ, => {
+	if running && !over && invulnCharges > 0 && invulnT <= 0 {
+		invulnCharges = invulnCharges - 1
+		invulnT = 10
+	}
+}
+
+onClick => {
+	if over {
+		broadcast "menu"
+	} else if running {
+		broadcast "jump"
+	}
+}
+
+onKey Key1, => {
+	if adOn && adSkip {
+		adSkip = false
+		adT = 0
+		adLine = "撞到了！\n看完广告越过障碍\n按2跳过 · 再按2结算"
+		broadcast "ad"
+	} else if inMenu {
+		hero = 1
+		broadcast "showmenu"
+	}
+}
+
+onKey Key2, => {
+	if adOn && adSkip {
+		adOn = false
+		adSkip = false
+		adT = 0
+		adSkipCount = 0
+		running = false
+		over = true
+		adLine = "认栽结算"
+		broadcast "ad"
+		broadcast "gameover"
+	} else if adOn && !adSkip {
+		adSkip = true
+		adSkipCount = adSkipCount + 1
+		adLine = "已跳过\n按1重看 · 再按2认栽结算"
+		broadcast "ad"
+		if adSkipCount >= 2 {
+			adOn = false
+			adSkip = false
+			adT = 0
+			adSkipCount = 0
+			running = false
+			over = true
+			broadcast "ad"
+			broadcast "gameover"
+		}
+	} else if inMenu {
+		hero = 2
+		broadcast "showmenu"
+	}
+}
+
+onKey Key3, => {
+	if inMenu {
+		hero = 3
+		broadcast "showmenu"
+	}
+}
+
+onKey Key4, => {
+	if inMenu {
+		mapId = 1
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key5, => {
+	if inMenu {
+		mapId = 2
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key6, => {
+	if inMenu {
+		mapId = 3
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key7, => {
+	if inMenu {
+		mapId = 4
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key8, => {
+	if inMenu {
+		mapId = 5
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key9, => {
+	if inMenu {
+		mapId = 6
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onKey Key0, => {
+	if inMenu {
+		mapId = 7
+		broadcast "applymap"
+		broadcast "showmenu"
+	}
+}
+
+onMsg "applymap", => {
+	if mapId < 1 {
+		mapId = 1
+	}
+	if mapId > 7 {
+		mapId = 7
+	}
+	clearGraphicEffects
+	if mapId == 2 {
+		setBackdrop "夜空"
+	} else if mapId == 3 {
+		setBackdrop "linjing"
+	} else if mapId == 4 {
+		setBackdrop "悬空"
+	} else if mapId == 5 {
+		setBackdrop "森林1"
+		setGraphicEffect ColorEffect, 16
+		setGraphicEffect BrightnessEffect, 14
+	} else if mapId == 6 {
+		setBackdrop "草坪"
+	} else if mapId == 7 {
+		setBackdrop "sky"
+		setGraphicEffect ColorEffect, 22
+		setGraphicEffect BrightnessEffect, 10
+	} else {
+		setBackdrop "sky"
+	}
+	if mapId == 5 {
+		getWidget(Monitor, "监视器1").hide
+		getWidget(Monitor, "监视器5").show
+	} else {
+		getWidget(Monitor, "监视器1").show
+		getWidget(Monitor, "监视器5").hide
+	}
+}
+
+onMsg "menu", => {
+	running = false
+	over = false
+	inMenu = true
+	adOn = false
+	adSkip = false
+	adSkipCount = 0
+	broadcast "applymap"
+	broadcastAndWait "reset"
+	broadcast "showmenu"
+}
+
+onMsg "boot", => {
+	inMenu = false
+	running = false
+	over = false
+	distance = 0
+	brave = 0
+	coins = 0
+	coinT = 0.4
+	coinBurst = 0
+	coinGap = 0
+	bombOn = false
+	bombCd = 0
+	invulnCharges = 3
+	invulnT = 0
+	sunT = 0
+	sunTick = 0
+	gatlingT = 0
+	gatlingTick = 0
+	peaAuto = 0
+	peaTick = 0
+	wallT = 0
+	cherryT = 0
+	plantT = 1.1
+	plantKind = 0
+	laneHome = 0
+	multiplier = 1
+	score = 0
+	playTimeSec = 0
+	timeScore = 0
+	runT = 0
+	spawnT = 0
+	answerLast = -1
+	quizOn = false
+	adOn = false
+	adSkip = false
+	adSkipCount = 0
+	if mapId == 5 {
+		runSpeed = 3.4
+		gapT = 4.08
+	} else if mapId == 6 {
+		runSpeed = 6.2
+		gapT = 2.5
+	} else if mapId == 7 {
+		runSpeed = 6.5
+		gapT = 2.2
+		planeFireT = 0
+	} else {
+		runSpeed = 7
+		gapT = 2.4
+	}
+	spawned = 0
+	tight = true
+	showBrave = 0
+	spawnKind = 0
+	feetY = -90
+	heroFeet = -90
+	bullGrounded = true
+	broadcast "applymap"
+	Camera.setZoom 1
+	Camera.setXYpos 0, 75
+	broadcastAndWait "reset"
+	inputLock = 0.35
+	running = true
+}
+
+onMsg "hit", => {
+	if running && !over && !adOn && invulnT <= 0 && !(mapId == 6 && wallT > 0) {
+		running = false
+		adOn = true
+		adSkip = false
+		adT = 0
+		inputLock = 3
+		adLine = "撞到了！\n看完广告越过障碍\n按2跳过 · 再按2结算"
+		broadcast "ad"
+	}
+}
+
+onMsg "hitold", => {
+	if running && !over && !quizOn && invulnT <= 0 && !(mapId == 6 && wallT > 0) {
+		invulnT = 4.6
+		inputLock = 2.8
+		quizT = 2.6
+		quizResult = 0
+		quizPick = 0
+		quizOn = true
+		quizI = float64(int(rand(0, 9.999)))
+		quizQ = "光更常从哪来"
+		quizC1 = "缝隙"
+		quizC2 = "地底"
+		quizAns = 1
+		if quizI > 0.5 {
+			quizQ = "闭眼能看清路吗"
+			quizC1 = "能"
+			quizC2 = "不能"
+			quizAns = 2
+		}
+		if quizI > 1.5 {
+			quizQ = "换道之前先要"
+			quizC1 = "看见"
+			quizC2 = "闭眼"
+			quizAns = 1
+		}
+		if quizI > 2.5 {
+			quizQ = "弯过去之后仍是"
+			quizC1 = "墙"
+			quizC2 = "路"
+			quizAns = 2
+		}
+		if quizI > 3.5 {
+			quizQ = "深呼吸是为了"
+			quizC1 = "继续"
+			quizC2 = "放弃"
+			quizAns = 1
+		}
+		if quizI > 4.5 {
+			quizQ = "中间那条道在"
+			quizC1 = "天上"
+			quizC2 = "正中"
+			quizAns = 2
+		}
+		if quizI > 5.5 {
+			quizQ = "跑起来更宜"
+			quizC1 = "向前"
+			quizC2 = "生气"
+			quizAns = 1
+		}
+		if quizI > 6.5 {
+			quizQ = "障碍更像什么"
+			quizC1 = "终点"
+			quizC2 = "提醒"
+			quizAns = 2
+		}
+		if quizI > 7.5 {
+			quizQ = "金币多半在"
+			quizC1 = "前方"
+			quizC2 = "身后"
+			quizAns = 1
+		}
+		if quizI > 8.5 {
+			quizQ = "慢慢跑也算"
+			quizC1 = "消失"
+			quizC2 = "在走"
+			quizAns = 2
+		}
+		answerI = float64(int(rand(0, 23.999)))
+		if answerI == answerLast {
+			answerI = answerI + 1
+			if answerI > 23 {
+				answerI = 0
+			}
+		}
+		answerLast = answerI
+		answerLine = "答案在你换道的时候"
+		if answerI > 0.5 {
+			answerLine = "停也是一种速度"
+		}
+		if answerI > 1.5 {
+			answerLine = "障碍是路的一部分"
+		}
+		if answerI > 2.5 {
+			answerLine = "你已经在路上了"
+		}
+		if answerI > 3.5 {
+			answerLine = "看见，比到达更早"
+		}
+		if answerI > 4.5 {
+			answerLine = "慢下来，路还在"
+		}
+		if answerI > 5.5 {
+			answerLine = "向前，是一种选择"
+		}
+		if answerI > 6.5 {
+			answerLine = "空隙里有光"
+		}
+		if answerI > 7.5 {
+			answerLine = "不必一次看清"
+		}
+		if answerI > 8.5 {
+			answerLine = "脚步记得方向"
+		}
+		if answerI > 9.5 {
+			answerLine = "撞上的，是提醒"
+		}
+		if answerI > 10.5 {
+			answerLine = "远方并不催你"
+		}
+		if answerI > 11.5 {
+			answerLine = "这一步，留给自己"
+		}
+		if answerI > 12.5 {
+			answerLine = "路会自己让出缝"
+		}
+		if answerI > 13.5 {
+			answerLine = "呼吸，然后继续"
+		}
+		if answerI > 14.5 {
+			answerLine = "未知也在陪你"
+		}
+		if answerI > 15.5 {
+			answerLine = "弯过来的，仍是路"
+		}
+		if answerI > 16.5 {
+			answerLine = "你比障碍更早出发"
+		}
+		if answerI > 17.5 {
+			answerLine = "轻轻地，再往前"
+		}
+		if answerI > 18.5 {
+			answerLine = "停留，不是后退"
+		}
+		if answerI > 19.5 {
+			answerLine = "侧风也算同行"
+		}
+		if answerI > 20.5 {
+			answerLine = "心里有一条中线"
+		}
+		if answerI > 21.5 {
+			answerLine = "看脚下，也看远处"
+		}
+		if answerI > 22.5 {
+			answerLine = "继续，本身就是答案"
+		}
+		adT = adT
+	}
+}
+
+onMsg "grade", => {
+	if quizPick == quizAns && quizPick > 0 {
+		quizResult = 1
+		inputLock = 1.35
+		invulnT = 1.8
+		broadcast "oracle"
+	} else {
+		quizResult = 0
+		inputLock = 1.55
+		invulnT = 1.8
+		broadcast "oracle"
+	}
+}
+
+onMsg "replay", => {
+	if over {
+		broadcast "menu"
+	}
+}

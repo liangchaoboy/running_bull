@@ -1,0 +1,13 @@
+// Merge into Road forever / lastMap switch (see Road_feel1.spx)
+
+// In lastMap costume switch, add:
+//			} else if mapId == 7 {
+//				setCostume "road2"
+//				setGraphicEffect ColorEffect, 40
+//				setGraphicEffect BrightnessEffect, 12
+//			}
+
+// Optional: include mapId == 7 in rush clone visibility with forest:
+//			if (mapId == 3 || mapId == 4 || mapId == 7) && running {
+// For mapId 7 rush trees can stay hidden (sky battle); only road strip + curveBend on hero/enemies needed.
+// curveBend is driven by Stage when mapId==7.

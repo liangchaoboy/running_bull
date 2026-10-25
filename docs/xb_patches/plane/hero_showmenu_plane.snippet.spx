@@ -1,0 +1,10 @@
+// In onMsg "showmenu" mapName chain, add before final else:
+//		} else if mapId == 7 {
+//			mapName = "飞机大战"
+//
+// Replace say sprintf keys line with:
+//		say fmt.Sprintf("%s\n1牛2鹿3狗 4白5夜6林7空8慢慢9植物0飞机\n飞机模式默认扫射 B导弹", mapName), 30
+//
+// Optional gameover branch:
+//		} else if mapId == 7 {
+//			say fmt.Sprintf("航程 %.0f  勇敢 %.0f\n金币 %.0f  得分 %.0f\n空格重新选择", distance, brave, coins, score), 40
