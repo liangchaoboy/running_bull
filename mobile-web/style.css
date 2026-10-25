@@ -147,7 +147,7 @@ html, body {
   bottom: 0;
   z-index: 6;
   display: grid;
-  grid-template-columns: 1fr 1.1fr 1fr 0.9fr;
+  grid-template-columns: 0.85fr 1fr 0.85fr 0.75fr 0.75fr;
   gap: 8px;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
@@ -196,6 +196,60 @@ html, body {
 .touch-btn.bomb:disabled,
 .touch-btn.bomb.cooling {
   opacity: 0.45;
+}
+
+.touch-btn.invuln {
+  background: linear-gradient(180deg, rgba(80, 180, 255, 0.95), rgba(40, 100, 220, 0.92));
+  font-size: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: 1.05;
+  position: relative;
+}
+.touch-btn.invuln .invuln-emoji { font-size: 22px; }
+.touch-btn.invuln .invuln-count {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.95;
+}
+.touch-btn.invuln:disabled,
+.touch-btn.invuln.empty {
+  opacity: 0.4;
+}
+.touch-btn.invuln.active {
+  background: linear-gradient(180deg, #ffe566, #ffaa00);
+  color: #3a2000;
+  box-shadow: 0 0 0 3px rgba(255, 200, 60, 0.55), 0 5px 0 rgba(0,0,0,0.28);
+  animation: invuln-pulse 0.55s ease-in-out infinite alternate;
+}
+@keyframes invuln-pulse {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.18); }
+}
+
+.hud-pill.invuln-pill {
+  background: rgba(30, 90, 180, 0.55);
+  border-color: rgba(140, 200, 255, 0.45);
+}
+.hud-pill.invuln-pill.active {
+  background: rgba(200, 140, 20, 0.7);
+  border-color: rgba(255, 220, 80, 0.7);
+  box-shadow: 0 0 12px rgba(255, 200, 60, 0.45);
+}
+#app[data-theme="space"] .hud-pill.invuln-pill {
+  background: rgba(100, 60, 180, 0.55);
+}
+#app[data-theme="space"] .touch-btn.invuln {
+  background: linear-gradient(180deg, rgba(180, 120, 255, 0.95), rgba(100, 60, 200, 0.92));
+}
+#app[data-theme="chill"] .touch-btn.invuln {
+  background: linear-gradient(180deg, rgba(140, 180, 160, 0.95), rgba(80, 120, 110, 0.92));
+}
+#app[data-theme="chill"] .hud-pill.invuln-pill {
+  background: rgba(70, 100, 90, 0.55);
 }
 
 #overlay,

@@ -34,6 +34,13 @@
           <span id="hud-score">0</span>
         </div>
       </div>
+      <div class="hud-pill invuln-pill" id="hud-invuln-pill" title="无敌冲撞次数">
+        <span class="hud-ico" aria-hidden="true">🛡️</span>
+        <div class="hud-block">
+          <span class="hud-label" id="hud-label-invuln">无敌</span>
+          <span id="hud-invuln">3</span>
+        </div>
+      </div>
     </header>
 
     <canvas id="game" width="420" height="740" aria-label="勇敢牛牛跑酷画面"></canvas>
@@ -43,13 +50,17 @@
       <button type="button" id="btn-jump" class="touch-btn jump" aria-label="起跳">跳</button>
       <button type="button" id="btn-right" class="touch-btn lane" aria-label="向右换道">▶</button>
       <button type="button" id="btn-bomb" class="touch-btn bomb" aria-label="丢炸弹">💣</button>
+      <button type="button" id="btn-invuln" class="touch-btn invuln" aria-label="无敌冲撞">
+        <span class="invuln-emoji" aria-hidden="true">🛡️</span>
+        <span class="invuln-count" id="btn-invuln-count">3</span>
+      </button>
     </div>
 
     <div id="overlay" class="show">
       <div class="card">
         <p class="slogan">勇敢牛牛，不怕困难</p>
         <h1>天天跑酷</h1>
-        <p class="hint">选地图 · 三道换道 · 点跳 · 捡金币 · 丢炸弹 · 慢慢跑酷看时长</p>
+        <p class="hint">选地图 · 换道跳跃 · 炸弹 · 无敌撞碎 · 慢慢跑酷看时长</p>
 
         <div id="prize-banner" class="prize-banner" aria-label="Top3 现金奖励"></div>
 
@@ -84,6 +95,7 @@
           <li>左右按钮或左右滑 = 换道</li>
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
           <li>💣 清当前道障碍（有冷却）</li>
+          <li>🛡️ 无敌×3：点开后 10 秒撞碎障碍</li>
         </ul>
 
         <div class="lb-panel" aria-label="排行榜">

@@ -24,6 +24,11 @@
   const btnRight = document.getElementById("btn-right");
   const btnJump = document.getElementById("btn-jump");
   const btnBomb = document.getElementById("btn-bomb");
+  const btnInvuln = document.getElementById("btn-invuln");
+  const btnInvulnCount = document.getElementById("btn-invuln-count");
+  const hudInvuln = document.getElementById("hud-invuln");
+  const hudLabelInvuln = document.getElementById("hud-label-invuln");
+  const hudInvulnPill = document.getElementById("hud-invuln-pill");
   const modePick = document.getElementById("mode-pick");
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   const authBar = document.getElementById("auth-bar");
@@ -56,6 +61,8 @@
   const ROAD_HALF_NEAR = 0.50;
   /** Scale up cow/obstacles so they still fill wider lanes. */
   const ROAD_SCALE = 1.18;
+  const INVULN_CHARGES = 3;
+  const INVULN_DURATION = 10;
   const BOMB_COOLDOWN = 1.6;
   /** Longer than hit-zone dwell at start speed so a well-timed jump clears. */
   const JUMP_DURATION = 0.82;
@@ -117,6 +124,8 @@
   let coins = 0;
   let score = 0;
   let bombCd = 0;
+  let invulnCharges = INVULN_CHARGES;
+  let invulnT = 0;
   let spawnAcc = 0;
   let coinAcc = 0;
   let runPhase = 0;
@@ -540,6 +549,8 @@
     coins = 0;
     score = 0;
     bombCd = 0;
+    invulnCharges = INVULN_CHARGES;
+    invulnT = 0;
     spawnAcc = 1.1;
     coinAcc = 0.2;
     runPhase = 0;
@@ -565,8 +576,11 @@
     overlay.classList.remove("show");
     overEl.classList.add("hidden");
     overEl.classList.remove("show-over");
-    btnBomb.disabled = false;
-    btnBomb.classList.remove("cooling");
+    if (btnBomb) {
+      btnBomb.disabled = false;
+      btnBomb.classList.remove("cooling");
+    }
+    syncInvulnUi();
     updateHud();
   }
 
@@ -589,6 +603,67 @@
     }
     hudCoins.textContent = String(coins);
     hudScore.textContent = String(score);
+    syncInvulnUi();
+  }
+
+  function isInvulnerable() {
+    return invulnT > 0;
+  }
+
+  function syncInvulnUi() {
+    const active = isInvulnerable();
+    const left = Math.max(0, invulnCharges);
+    if (hudInvuln) {
+      hudInvuln.textContent = active
+        ? Math.ceil(invulnT) + "s"
+        : String(left);
+    }
+    if (hudLabelInvuln) {
+      hudLabelInvuln.textContent = active ? "冲撞中" : "无敌";
+    }
+    if (hudInvulnPill) {
+      hudInvulnPill.classList.toggle("active", active);
+    }
+    if (btnInvulnCount) {
+      btnInvulnCount.textContent = active
+        ? Math.ceil(invulnT) + "s"
+        : "×" + left;
+    }
+    if (btnInvuln) {
+      btnInvuln.classList.toggle("active", active);
+      btnInvuln.classList.toggle("empty", !active && left <= 0);
+      btnInvuln.disabled = active || left <= 0 || !running || dead || deathFx;
+      btnInvuln.setAttribute(
+        "aria-label",
+        active
+          ? "无敌冲撞剩余 " + Math.ceil(invulnT) + " 秒"
+          : "无敌冲撞，剩余 " + left + " 次"
+      );
+    }
+  }
+
+  function activateInvuln() {
+    if (!running || dead || deathFx) return;
+    if (isInvulnerable()) return;
+    if (invulnCharges <= 0) return;
+    invulnCharges -= 1;
+    invulnT = INVULN_DURATION;
+    flashT = Math.max(flashT, 0.35);
+    shakeT = Math.max(shakeT, 0.22);
+    // golden burst around cow
+    burst(player.lane, 0.78, "rgba(255,220,80,0.9)", 18);
+    spawnFloatText(player.lane, 0.78, "无敌!", "#ffe566");
+    syncInvulnUi();
+  }
+
+  function smashObstacle(e) {
+    e.alive = false;
+    boomBurst(e.lane, e.z, 0.85);
+    spawnBlast(e.lane, e.z, 0.45, 3);
+    burst(e.lane, e.z, "rgba(255,230,120,0.95)", 14);
+    spawnFloatText(e.lane, e.z, "撞碎!", "#ffe566");
+    shakeT = Math.max(shakeT, 0.28);
+    flashT = Math.max(flashT, 0.18);
   }
 
   function changeLane(dir) {
@@ -867,6 +942,7 @@
     boomBurst(player.lane, 0.78, 0.9);
     spawnBlast(player.lane, 0.78, 0.55, 3);
     burst(player.lane, 0.78, cols.hot, 24);
+    invulnT = 0;
     updateHud();
   }
 
@@ -1002,6 +1078,15 @@
       }
     }
 
+    if (invulnT > 0) {
+      invulnT -= dt;
+      if (invulnT <= 0) {
+        invulnT = 0;
+        spawnFloatText(player.lane, 0.78, "无敌结束", "#9ca3af");
+      }
+      syncInvulnUi();
+    }
+
     if (shakeT > 0) shakeT = Math.max(0, shakeT - dt);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
     if (coinPulseT > 0) coinPulseT = Math.max(0, coinPulseT - dt);
@@ -1050,7 +1135,9 @@
         coins += 1;
         coinPickupFx(e.lane, e.z);
       } else if (e.kind === "obstacle") {
-        if (!isJumpClearing()) {
+        if (isInvulnerable()) {
+          smashObstacle(e);
+        } else if (!isJumpClearing()) {
           gameOver();
           return;
         }
@@ -2136,6 +2223,25 @@
     let y = a.y + (b.y - a.y) * frac;
     const scale = a.scale + (b.scale - a.scale) * frac;
 
+    // invulnerability aura (drawn under cow)
+    if (isInvulnerable()) {
+      const pulse = 0.65 + 0.35 * Math.sin(animTime * 10);
+      const ag = ctx.createRadialGradient(x, y - 20 * scale, 4, x, y - 10 * scale, 48 * scale);
+      ag.addColorStop(0, "rgba(255,240,150," + (0.55 * pulse) + ")");
+      ag.addColorStop(0.45, "rgba(255,180,40," + (0.28 * pulse) + ")");
+      ag.addColorStop(1, "rgba(255,200,60,0)");
+      ctx.fillStyle = ag;
+      ctx.beginPath();
+      ctx.arc(x, y - 12 * scale, 46 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      // shield ring
+      ctx.strokeStyle = "rgba(255,230,120," + (0.7 * pulse) + ")";
+      ctx.lineWidth = 3 * scale;
+      ctx.beginPath();
+      ctx.arc(x, y - 14 * scale, 34 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     let jumpY = 0;
     let stretch = 1;
     if (player.jumping) {
@@ -2519,6 +2625,11 @@
     drawParticles();
     drawFloatTexts();
     drawBombFlash(vw, vh);
+    if (isInvulnerable()) {
+      const pulse = 0.08 + 0.06 * (0.5 + 0.5 * Math.sin(animTime * 8));
+      ctx.fillStyle = "rgba(255, 200, 60, " + pulse + ")";
+      ctx.fillRect(0, 0, vw, vh);
+    }
     if (deathFx) {
       ctx.fillStyle = "rgba(180,20,20," + (0.15 + 0.2 * Math.min(1, deathT)) + ")";
       ctx.fillRect(0, 0, vw, vh);
@@ -2551,6 +2662,7 @@
   bindPress(btnRight, () => changeLane(1));
   bindPress(btnJump, jump);
   bindPress(btnBomb, fireBomb);
+  bindPress(btnInvuln, activateInvuln);
 
   if (modePick) {
     modePick.addEventListener("click", (ev) => {
@@ -2682,6 +2794,14 @@
       case "b":
       case "B":
         fireBomb();
+        break;
+      case "i":
+      case "I":
+      case "v":
+      case "V":
+      case "q":
+      case "Q":
+        activateInvuln();
         break;
       case "Enter":
         if (!running) resetGame();

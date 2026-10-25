@@ -37,6 +37,8 @@ python3 -m http.server 8080
 >
 > 新模式 **慢慢跑酷**：标题页选 😎；积分看时长。XBuilder 对齐见 `docs/XBUILDER_CHILL_MODE.md`（本仓库无工程文件，未 Publish）。
 >
+> **无敌冲撞**：每局 3 次，点 🛡️ 开 10 秒撞碎障碍。对齐见 `docs/XBUILDER_INVULN.md`。
+>
 > 炸弹有明显爆炸动画；跑道含路缘/灯柱/视差；吃币有飘字。对外展示向打磨（XBuilder 未对齐）。
 
 ## 操作（纯触控，无需键盘）
