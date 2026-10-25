@@ -1,0 +1,18 @@
+# feel2 Road — B width breathe + C section tint
+# Paste in Road forever (non-rush) when running:
+
+		if running {
+			setSize 1.48 * (1 + math.Sin(runT * 0.85) * 0.07)
+			if secSlot == 2 {
+				setGraphicEffect BrightnessEffect, -28
+			} else if secSlot == 1 {
+				setGraphicEffect BrightnessEffect, 6
+			} else {
+				setGraphicEffect BrightnessEffect, 0
+			}
+		} else {
+			setSize 1.48
+			setGraphicEffect BrightnessEffect, 0
+		}
+
+# feel2 A (curve) lives on Stage curveBend → heroes tx += curveBend*0.25 (already).

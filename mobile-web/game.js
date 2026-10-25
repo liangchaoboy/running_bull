@@ -91,8 +91,22 @@
   const BOOST_MULT = 1.45;
   const BOOST_CD = 2.5;
   const BOOST_LOCK = 0.1;
-  const BOOST_LANE_SNAP = 0.45;
-  const BOOST_LANE_LERP = 26;
+  const BOOST_LANE_SNAP = 0.55;
+  const BOOST_LANE_LERP = 36;
+  /** feel2 road A+B+C: curve whip, width/slope, section themes (bridge/cave). */
+  const ROAD_WIDTH_K = 0.026;
+  const ROAD_WIDTH_AMP = 0.11;
+  const ROAD_SLOPE_K = 0.021;
+  const ROAD_SLOPE_AMP = 0.028;
+  const ROAD_SECTION_LEN = 160;
+  const CURVE_K_DEFAULT = 0.030;
+  const CURVE_AMP_DEFAULT = 0.042;
+  const CURVE_K_PLANT = 0.028;
+  const CURVE_AMP_PLANT = 0.038;
+  const CURVE_K_SPACE = 0.024;
+  const CURVE_AMP_SPACE = 0.035;
+  const CURVE_K_CHILL = 0.018;
+  const CURVE_AMP_CHILL = 0.028;
   /** 撞障激励广告：观看冻结；看完后短暂无敌 + 短道具。 */
   const REWARD_AD_DURATION = 2.0;
   const REWARD_AD_INVULN = 1.8;
@@ -113,11 +127,11 @@
   const ROAD_HALF_NEAR_SPACE = 0.54;
   /** 优美森林 / 土路：灭点与路心横向弯道（相对 vw）。 */
   const CURVE_K_FOREST = 0.038;
-  const CURVE_AMP_FOREST = 0.06;
+  const CURVE_AMP_FOREST = 0.075;
   const CURVE_K_EARTH = 0.032;
-  const CURVE_AMP_EARTH = 0.045;
+  const CURVE_AMP_EARTH = 0.055;
   const CURVE_K_PLANE = 0.036;
-  const CURVE_AMP_PLANE = 0.055;
+  const CURVE_AMP_PLANE = 0.065;
   /** 飞机大战：默认扫射间隔；小怪/大怪 HP */
   const PLANE_FIRE_INTERVAL = 0.14;
   const PLANE_HP_SMALL = 3;
@@ -161,13 +175,12 @@
   const PLANT_GATLING_INTERVAL = 0.18;
   const PLANT_WALLNUT_DUR = 5;
   const PLANT_CHERRY_DUR = 10;
-  const PLANT_PICKUP_BASE = 4.2;
+  const PLANT_PICKUP_BASE = 2.0;
   const PLANT_BOMB_CD = 12;
-  /** Lane visual follow: higher = snappier (was ~14). */
-  /** Snap-ish lane (Subway/Zurich): little long-lerp. Refine when free 3-lane measured. */
-  const LANE_LERP = 48;
+  /** Lane: on-rails snap — ~2–3 frames settle, no float/overshoot. */
+  const LANE_LERP = 70;
   /** Immediate snap fraction on lane change so first frame moves. */
-  const LANE_SNAP = 0.78;
+  const LANE_SNAP = 0.92;
   /** Swipe axis threshold in CSS px (was 40). */
   const SWIPE_AXIS_MIN = 18;
   const SWIPE_TAP_MAX = 22;
@@ -382,7 +395,10 @@
   let plantSunAcc = 0;
   let plantPeaAcc = 0;
   let plantGatAcc = 0;
-  let plantPickupAcc = 2.5;
+  let plantPickupAcc = 0.85;
+  /** feel2: guarantee ≥1–2 pickups in first 20s */
+  let plantPickupsGot = 0;
+  let plantRunTime = 0;
   /** @type {Array<{lane:number,z:number,life:number,kind:string}>} */
   let plantShots = [];
   let planeShots = [];
@@ -1074,10 +1090,10 @@
     return { w: rect.width || W, h: rect.height || H };
   }
 
-  /** Gentle S-curve for forest (stronger) and earth. Space/chill/plant stay straight. */
+  /** feel2 A: visible left/right road whip — all modes (chill gentlest). */
   function curveDx(z, vw) {
-    let k = 0;
-    let ampFrac = 0;
+    let k = CURVE_K_DEFAULT;
+    let ampFrac = CURVE_AMP_DEFAULT;
     if (mode === "forest") {
       k = CURVE_K_FOREST;
       ampFrac = CURVE_AMP_FOREST;
@@ -1087,14 +1103,57 @@
     } else if (mode === "earth") {
       k = CURVE_K_EARTH;
       ampFrac = CURVE_AMP_EARTH;
-    } else {
-      return 0;
+    } else if (mode === "plant") {
+      k = CURVE_K_PLANT;
+      ampFrac = CURVE_AMP_PLANT;
+    } else if (mode === "space") {
+      k = CURVE_K_SPACE;
+      ampFrac = CURVE_AMP_SPACE;
+    } else if (mode === "chill") {
+      k = CURVE_K_CHILL;
+      ampFrac = CURVE_AMP_CHILL;
     }
+    // Bridge sections: slightly stronger sway; caves: tighter.
+    const sec = roadSectionId();
+    if (sec === "bridge") ampFrac *= 1.15;
+    else if (sec === "cave") ampFrac *= 0.85;
     const zz = Math.max(0, Math.min(1, z));
-    // Far lags slightly so the path reads as continuous bends, not a rigid shift.
     const phase = distance * k - (1 - zz) * 0.85;
     const depth = 0.4 + 0.6 * zz;
     return Math.sin(phase) * vw * ampFrac * depth;
+  }
+
+  /** feel2 B: near-bed width breathe. */
+  function roadWidthMul(z) {
+    const zz = Math.max(0, Math.min(1, z));
+    const phase = distance * ROAD_WIDTH_K - (1 - zz) * 0.55;
+    const depth = 0.4 + 0.6 * zz;
+    let mul = 1 + Math.sin(phase) * ROAD_WIDTH_AMP * depth;
+    const sec = roadSectionId();
+    if (sec === "bridge") mul *= 0.92; // narrower causeway
+    else if (sec === "cave") mul *= 0.88; // tunnel pinch
+    return mul;
+  }
+
+  /** feel2 B: gentle hill / depth bob. */
+  function roadSlopeDy(z, vh) {
+    const zz = Math.max(0, Math.min(1, z));
+    const phase = distance * ROAD_SLOPE_K - (1 - zz) * 0.65;
+    const depth = 0.3 + 0.7 * zz;
+    let dy = Math.sin(phase) * vh * ROAD_SLOPE_AMP * depth;
+    if (roadSectionId() === "bridge") dy -= vh * 0.012 * zz; // rise onto bridge
+    return dy;
+  }
+
+  /** feel2 C: plain → bridge → cave cycle by distance. */
+  function roadSectionId() {
+    const slot = Math.floor(Math.max(0, distance) / ROAD_SECTION_LEN) % 3;
+    return slot === 1 ? "bridge" : slot === 2 ? "cave" : "plain";
+  }
+
+  function roadSectionLabel() {
+    const s = roadSectionId();
+    return s === "bridge" ? "桥" : s === "cave" ? "山洞" : "";
   }
 
   /** Perspective: z in [0,1] where 0 = far (top), 1 = near (bottom).
@@ -1115,11 +1174,11 @@
   function project(lane, z, vw, vh) {
     const horizonY = vh * 0.14;
     const nearY = vh * 0.82;
-    const y = horizonY + (nearY - horizonY) * z;
+    const y = horizonY + (nearY - horizonY) * z + roadSlopeDy(z, vh);
     const rh = roadHalfPair();
     const roadHalfFar = vw * rh.far;
     const roadHalfNear = vw * rh.near;
-    const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
+    const half = (roadHalfFar + (roadHalfNear - roadHalfFar) * z) * roadWidthMul(z);
     const cx = vw * 0.5 + curveDx(z, vw);
     // Fractional displayLane must lerp — LANE_X[1.01] is undefined → NaN (plane vanish on lane change).
     let lx;
@@ -1141,11 +1200,11 @@
   function roadEdges(z, vw, vh) {
     const horizonY = vh * 0.14;
     const nearY = vh * 0.82;
-    const y = horizonY + (nearY - horizonY) * z;
+    const y = horizonY + (nearY - horizonY) * z + roadSlopeDy(z, vh);
     const rh = roadHalfPair();
     const roadHalfFar = vw * rh.far;
     const roadHalfNear = vw * rh.near;
-    const half = roadHalfFar + (roadHalfNear - roadHalfFar) * z;
+    const half = (roadHalfFar + (roadHalfNear - roadHalfFar) * z) * roadWidthMul(z);
     const cx = vw * 0.5 + curveDx(z, vw);
     return { y, left: cx - half, right: cx + half, half, cx };
   }
@@ -1210,7 +1269,9 @@
     plantSunAcc = 0;
     plantPeaAcc = 0;
     plantGatAcc = 0;
-    plantPickupAcc = 2.2;
+    plantPickupAcc = 0.85;
+    plantPickupsGot = 0;
+    plantRunTime = 0;
     plantShots = [];
     planeShots = [];
     planeFireAcc = 0;
@@ -1670,18 +1731,18 @@
     if (variant === "sunflower") {
       plantSunflowerT = PLANT_SUNFLOWER_DUR;
       plantSunAcc = 0.15;
-      spawnFloatText(player.lane, 0.78, "向日葵!", "#fbbf24");
+      spawnFloatText(player.lane, 0.78, "吃到向日葵!", "#fbbf24");
     } else if (variant === "peashooter") {
       plantPeaT = PLANT_PEA_DUR;
       plantPeaAcc = 0.05;
-      spawnFloatText(player.lane, 0.78, "豌豆!", "#84cc16");
+      spawnFloatText(player.lane, 0.78, "吃到豌豆!", "#84cc16");
     } else if (variant === "gatling") {
       plantGatlingT = PLANT_GATLING_DUR;
       plantGatAcc = 0.02;
-      spawnFloatText(player.lane, 0.78, "加特林!", "#22c55e");
+      spawnFloatText(player.lane, 0.78, "吃到加特林!", "#22c55e");
     } else if (variant === "wallnut") {
       plantWallnutT = PLANT_WALLNUT_DUR;
-      spawnFloatText(player.lane, 0.78, "坚果护盾!", "#d97706");
+      spawnFloatText(player.lane, 0.78, "吃到坚果!", "#d97706");
       burst(player.lane, 0.78, "rgba(217,119,6,0.85)", 12);
     }
   }
@@ -1796,10 +1857,17 @@
     }
     plantShots = plantShots.filter((s) => s.life > 0 && s.z > -0.1);
 
+    plantRunTime += dt;
+    if (plantRunTime < 20 && plantPickupsGot < 2) {
+      const needBy = plantPickupsGot === 0 ? 4.5 : 14;
+      if (plantRunTime >= needBy && plantPickupAcc > 0.35) {
+        plantPickupAcc = 0.05;
+      }
+    }
     plantPickupAcc -= dt;
     if (plantPickupAcc <= 0) {
       spawnPlantPickup();
-      plantPickupAcc = PLANT_PICKUP_BASE + Math.random() * 2.2;
+      plantPickupAcc = PLANT_PICKUP_BASE + Math.random() * 1.0;
     }
   }
 
@@ -2665,8 +2733,10 @@
         coinPickupFx(e.lane, e.z);
       } else if (e.kind === "plant_pickup") {
         e.alive = false;
+        plantPickupsGot += 1;
         activatePlantPickup(e.variant || "sunflower");
-        burst(e.lane, e.z, "rgba(132,204,22,0.85)", 10);
+        burst(e.lane, e.z, "rgba(132,204,22,0.95)", 16);
+        flashT = Math.max(flashT, 0.12);
       } else if (e.kind === "obstacle") {
         if (isInvulnerable() || isPlantWallnutShield()) {
           smashObstacle(e);
@@ -3667,7 +3737,8 @@
   }
 
   function drawPlantPickup(p, variant) {
-    const bob = Math.sin(animTime * 4 + p.x * 0.03) * 4 * p.scale;
+    const bob = Math.sin(animTime * 5 + p.x * 0.03) * 6 * p.scale;
+    const pulse = 0.85 + 0.15 * Math.sin(animTime * 7);
     const key =
       variant === "peashooter"
         ? "peashooter"
@@ -3676,18 +3747,134 @@
           : variant === "wallnut"
             ? "wallnut"
             : "sunflower";
+    const label =
+      variant === "peashooter"
+        ? "豌豆"
+        : variant === "gatling"
+          ? "加特林"
+          : variant === "wallnut"
+            ? "坚果"
+            : "向日葵";
     ctx.save();
     ctx.translate(0, -bob);
-    // soft glow ring
-    const halo = ctx.createRadialGradient(p.x, p.y - 30 * p.scale, 4, p.x, p.y - 30 * p.scale, 36 * p.scale);
-    halo.addColorStop(0, "rgba(190,242,100,0.45)");
+    const halo = ctx.createRadialGradient(
+      p.x, p.y - 36 * p.scale, 6,
+      p.x, p.y - 36 * p.scale, 52 * p.scale * pulse
+    );
+    halo.addColorStop(0, "rgba(250,250,120,0.75)");
+    halo.addColorStop(0.45, "rgba(190,242,100,0.4)");
     halo.addColorStop(1, "rgba(190,242,100,0)");
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(p.x, p.y - 28 * p.scale, 34 * p.scale, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y - 34 * p.scale, 48 * p.scale * pulse, 0, Math.PI * 2);
     ctx.fill();
-    drawPlantImg(key, p, 48, 6);
+    ctx.strokeStyle = "rgba(255,255,200," + (0.55 + 0.35 * pulse) + ")";
+    ctx.lineWidth = Math.max(2, 3.2 * p.scale);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 34 * p.scale, 30 * p.scale * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    drawPlantImg(key, p, 72, 8);
+    ctx.font = "bold " + Math.round(11 * p.scale) + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.lineWidth = Math.max(2, 3 * p.scale);
+    ctx.strokeStyle = "rgba(20,40,10,0.75)";
+    ctx.fillStyle = "#fef08a";
+    const ly = p.y - 78 * p.scale;
+    ctx.strokeText(label, p.x, ly);
+    ctx.fillText(label, p.x, ly);
     ctx.restore();
+  }
+
+
+  /** feel2 C: bridge rails / cave walls + vignette over current road. */
+  function drawRoadSectionOverlay(vw, vh) {
+    const sec = roadSectionId();
+    if (sec === "plain") return;
+    const far = roadEdges(0.05, vw, vh);
+    const near = roadEdges(0.98, vw, vh);
+    if (sec === "bridge") {
+      // side rail posts
+      ctx.strokeStyle = "rgba(220,230,240,0.7)";
+      ctx.fillStyle = "rgba(180,190,200,0.55)";
+      ctx.lineWidth = 2;
+      for (let z = 0.15; z <= 0.95; z += 0.08) {
+        const e = roadEdges(z, vw, vh);
+        const h = 10 + 28 * z;
+        ctx.fillRect(e.left - 4 * z, e.y - h, Math.max(2, 3 * z), h);
+        ctx.fillRect(e.right - Math.max(2, 3 * z) + 4 * z, e.y - h, Math.max(2, 3 * z), h);
+      }
+      // rail lines
+      ctx.beginPath();
+      for (let z = 0; z <= 1.001; z += 0.05) {
+        const e = roadEdges(Math.min(1, z), vw, vh);
+        const yy = e.y - (8 + 22 * z);
+        if (z === 0) ctx.moveTo(e.left - 2, yy);
+        else ctx.lineTo(e.left - 2, yy);
+      }
+      ctx.stroke();
+      ctx.beginPath();
+      for (let z = 0; z <= 1.001; z += 0.05) {
+        const e = roadEdges(Math.min(1, z), vw, vh);
+        const yy = e.y - (8 + 22 * z);
+        if (z === 0) ctx.moveTo(e.right + 2, yy);
+        else ctx.lineTo(e.right + 2, yy);
+      }
+      ctx.stroke();
+      // under-bridge shadow strip at far
+      ctx.fillStyle = "rgba(30,40,60,0.25)";
+      ctx.fillRect(0, far.y - 8, vw, 18);
+    } else if (sec === "cave") {
+      // rock walls left/right outside road
+      const wallGradL = ctx.createLinearGradient(0, 0, near.left, 0);
+      wallGradL.addColorStop(0, "rgba(20,16,12,0.92)");
+      wallGradL.addColorStop(1, "rgba(40,32,24,0.15)");
+      ctx.fillStyle = wallGradL;
+      ctx.beginPath();
+      ctx.moveTo(0, far.y - 40);
+      ctx.lineTo(far.left - 8, far.y);
+      for (let z = 0; z <= 1.001; z += 0.08) {
+        const e = roadEdges(Math.min(1, z), vw, vh);
+        ctx.lineTo(e.left - 6 - 10 * z, e.y);
+      }
+      ctx.lineTo(0, near.y + 40);
+      ctx.closePath();
+      ctx.fill();
+      const wallGradR = ctx.createLinearGradient(vw, 0, near.right, 0);
+      wallGradR.addColorStop(0, "rgba(20,16,12,0.92)");
+      wallGradR.addColorStop(1, "rgba(40,32,24,0.15)");
+      ctx.fillStyle = wallGradR;
+      ctx.beginPath();
+      ctx.moveTo(vw, far.y - 40);
+      ctx.lineTo(far.right + 8, far.y);
+      for (let z = 0; z <= 1.001; z += 0.08) {
+        const e = roadEdges(Math.min(1, z), vw, vh);
+        ctx.lineTo(e.right + 6 + 10 * z, e.y);
+      }
+      ctx.lineTo(vw, near.y + 40);
+      ctx.closePath();
+      ctx.fill();
+      // cave mouth / vignette
+      const vig = ctx.createRadialGradient(vw * 0.5, vh * 0.45, vh * 0.12, vw * 0.5, vh * 0.5, vh * 0.72);
+      vig.addColorStop(0, "rgba(0,0,0,0)");
+      vig.addColorStop(0.55, "rgba(0,0,0,0.15)");
+      vig.addColorStop(1, "rgba(0,0,0,0.55)");
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, vw, vh);
+    }
+    const label = roadSectionLabel();
+    if (label) {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = sec === "cave" ? "#e7e5e4" : "#e0f2fe";
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(label, vw * 0.5, vh * 0.11);
+      ctx.fillText(label, vw * 0.5, vh * 0.11);
+      ctx.restore();
+    }
   }
 
   function drawZombieObstacle(p, tall) {
@@ -4662,7 +4849,7 @@
     }
     const bob = bobPx * scale;
     // slight lateral settle toward target lane without rotating the sprite
-    const settleX = (player.lane - player.displayLane) * -10 * scale;
+    const settleX = (player.lane - player.displayLane) * -5 * scale;
 
     // XB foot-plant size pulse only (contact squash, not flip)
     let plantScale = 1;
@@ -4692,7 +4879,7 @@
     const strideTri = Math.asin(Math.max(-1, Math.min(1, Math.sin(runPhase * 2.4)))) / (Math.PI / 2);
     const bob = player.jumping || player.sliding ? 0 : Math.abs(stride) * 5.5 * scale;
     const lean =
-      (player.lane - player.displayLane) * -12 +
+      (player.lane - player.displayLane) * -7 +
       (player.jumping ? -8 : player.sliding ? 18 : 7 + stride * 4);
     const legSwing = player.jumping ? 0.55 : player.sliding ? 0 : strideTri * 1.35;
     const armSwing = player.jumping ? -0.4 : player.sliding ? 0.2 : -strideTri * 1.35;
@@ -5066,21 +5253,27 @@
     if (mode === "space") {
       drawSkySpace(vw, vh);
       drawRoadSpace(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     } else if (mode === "chill") {
       drawSkyChill(vw, vh);
       drawRoadChill(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     } else if (mode === "plant") {
       drawSkyPlant(vw, vh);
       drawRoadPlant(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     } else if (mode === "forest") {
       drawSkyForest(vw, vh);
       drawRoadForest(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     } else if (mode === "plane") {
       drawSkyPlane(vw, vh);
       drawRoadPlane(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     } else {
       drawSkyEarth(vw, vh);
       drawRoadEarth(vw, vh);
+      drawRoadSectionOverlay(vw, vh);
     }
 
     const sorted = entities.slice().sort((a, b) => a.z - b.z);

@@ -1,0 +1,40 @@
+# feel2 Stage — A all-map curve + C secSlot + plant denser
+# See /workspace/xb_src/stage_ad.spx (already applied).
+
+# Vars: curveAmp float64, secSlot float64
+
+# Curve block (replace mapId==3||7-only):
+		if running {
+			curvePhase = curvePhase + 0.007
+			if curvePhase > 6.28318 {
+				curvePhase = curvePhase - 6.28318
+			}
+			curveAmp = 28
+			if mapId == 3 {
+				curveAmp = 48
+			} else if mapId == 7 {
+				curveAmp = 42
+			} else if mapId == 5 {
+				curveAmp = 18
+			} else if mapId == 6 {
+				curveAmp = 26
+			} else if mapId == 4 {
+				curveAmp = 24
+			}
+			secSlot = float64(int(runT/8) % 3)
+			if secSlot == 1 {
+				curveAmp = curveAmp * 1.15
+			} else if secSlot == 2 {
+				curveAmp = curveAmp * 0.85
+			}
+			curveBend = curveBend + (math.Sin(curvePhase)*curveAmp - curveBend)*0.05
+		} else {
+			curveBend = curveBend * 0.85
+			if curveBend < 0.4 && curveBend > -0.4 {
+				curveBend = 0
+			}
+		}
+
+# Plant:
+			if plantT >= 1.35 { ... broadcast "plantcast" }
+	plantT = 0.35   # boot

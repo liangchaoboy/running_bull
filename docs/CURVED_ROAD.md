@@ -30,3 +30,8 @@ cx = vw * 0.5 + curveDx
 ## XBuilder
 
 在路心 / 灭点 X 上套同一 `sin(distance * k)`；道边树、虚线、障碍跟 `cx` 走。
+
+
+## feel2 扩展（2026-10-25）
+
+全模式启用弯道（不再仅 forest/earth/plane）。另见路宽 `roadWidthMul`、坡度 `roadSlopeDy`、分段 `roadSectionId`（平原/桥/山洞）于 `mobile-web/game.js`；文档 `docs/FEEL2_NOTES.md`。
