@@ -74,4 +74,6 @@
 
 ## SHA / ?v=
 
-（push 后回填）
+`309fcc6e90e5f81ba3478fc111ac2743eaa541b1` · `?v=boost1`
+
+Play: https://liangchaoboy.github.io/running_bull/mobile-web/?v=boost1
