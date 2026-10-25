@@ -3762,7 +3762,9 @@
     drawPlayerProcedural(x, py, scale, stretch);
   }
 
-  /** Rear ¾ run cycle from assets/forest/{bull,deer,dog}_0..4.png — no side rotate. */
+  /** Rear ¾ run cycle from assets/forest/{bull,deer,dog}_0..4.png — no side rotate.
+   *  Used in all modes (earth/forest/space/chill/plant) when char assets load.
+   *  Synced to XB: lock rotation, bob~10 on plant, size pulse 1.04/0.99. */
   function drawPlayerRear(x, py, scale, stretch) {
     const kind = heroKind || "bull";
     let frame = 0;
@@ -3775,17 +3777,27 @@
     const img = charImgs[kind + "_" + frame];
     if (!img || !img.complete || !img.naturalWidth) return false;
 
-    // Vertical bob from stride (XB: hop on odd frames) — locked rotation (no lean rotate)
-    const stride = Math.sin(runPhase * 2.4);
-    const bob = player.jumping || player.sliding ? 0 : Math.abs(stride) * 6.5 * scale;
+    // Vertical bob (XB plant frames ~10 / mid 0 / recovery 2) — locked rotation (no lean)
+    let bobPx = 0;
+    if (!player.jumping && !player.sliding) {
+      if (frame === 0 || frame === 2) bobPx = 10;
+      else if (frame === 3) bobPx = 2;
+    }
+    const bob = bobPx * scale;
     // slight lateral settle toward target lane without rotating the sprite
     const settleX = (player.lane - player.displayLane) * -10 * scale;
 
-    const drawH = (player.sliding ? 78 : 96) * scale;
+    // XB foot-plant size pulse only (contact squash, not flip)
+    let plantScale = 1;
+    if (!player.jumping && !player.sliding) {
+      plantScale = frame === 0 || frame === 2 ? 1.04 : 0.99;
+    }
+
+    const drawH = (player.sliding ? 78 : 96) * scale * plantScale;
     const drawW = drawH * (img.naturalWidth / img.naturalHeight);
-    // hips-near / head-far: mild extra vertical squash toward feet (sprite already pear-shaped)
-    const hipNear = player.sliding ? 0.78 : 1.08;
-    const headFar = player.sliding ? 0.9 : 0.92;
+    // hips-near / head-far: pear sprites + mild draw bias toward feet
+    const hipNear = player.sliding ? 0.78 : 1.12;
+    const headFar = player.sliding ? 0.9 : 0.9;
 
     ctx.save();
     ctx.translate(x + settleX, py + bob + (player.sliding ? 12 * scale : 0));

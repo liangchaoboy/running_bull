@@ -25,3 +25,11 @@
 
 ## 3. 回归
 植物跑酷 / 抽奖 / 慢慢跑酷 / 无敌 / 炸弹保持不变。
+
+## 4. 角色锚定补丁（2026-10-25 Asia/Shanghai）
+- 问题：英雄脚本曾用 `setRotationStyle Normal` + heading lean（纸片翻），与「锁旋转」宣称不一致。
+- 修复：牛/鹿/狗跑跳全程 `None` + heading 90；仅垂直 bob + 轻落地 size；换道仍横移。
+- 造型：`gen.py` 加强 hips近头远 + 落脚影；上传目录 `xb_upload/forest_heroes/`。
+- 详见 `XBUILDER_HERO_DEPTH.md` 与 `/workspace/agent-tools/anime-hero-3d-NOTES.md`。
+- **未**自动 Publish / 未推网页；等 computerUse Publish 后再 sync。
+- mobile-web sync: `?v=hero3d1`（角色锚定 + pear 造型）。

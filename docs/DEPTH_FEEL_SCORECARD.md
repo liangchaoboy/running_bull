@@ -50,3 +50,13 @@
 结论: 过（无单项 ≤2；可 Publish / 推网页）
 备注: XB 路景冻结 + 树灌冲镜；web 停掉 forest_road tile 纵滑，灌木改 roadScroll z 循环
 ```
+
+```
+日期: 2026-10-25 Asia/Shanghai（预 Publish 估计）
+构建: XB 角色锚定补丁待 computerUse Publish / web 未推
+录屏: （Publish 后补）
+1灭点: —  2缩放: —  3速差: —  4冲镜: —  5地面: —  6角色: 4/5（估计：锁旋转+pear 造型）
+总分: —/30（仅修 item6）
+结论: 代码/造型就绪；需 Publish 后实机复测
+备注: 见 anime-hero-3d-NOTES.md；根因是 lean/Normal 重现
+```
