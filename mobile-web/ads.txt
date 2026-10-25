@@ -1,0 +1,14 @@
+# Google AdSense ads.txt placeholder for project Pages path:
+#   https://liangchaoboy.github.io/running_bull/mobile-web/ads.txt
+#
+# After AdSense approval, uncomment and replace pub-XXXXXXXXXXXXXXXX
+# with your real publisher id (same digits as ca-pub-… without "ca-"):
+#
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+#
+# NOTE: AdSense crawlers prefer site-root ads.txt.
+# This project lives under /running_bull/mobile-web/ on a user Pages site.
+# For reliable verification, later add a user-site root
+#   https://liangchaoboy.github.io/ads.txt
+# (repo liangchaoboy.github.io) or bind a custom domain and put ads.txt at /.
+# Until then, keep the line above commented — do not publish a fake pub id.

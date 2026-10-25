@@ -33,3 +33,7 @@ window.__RB_REWARDED_AD = {
 2. 障碍在看完前 **保留**；跳过不移除。
 3. 看完：清障 + 1.8s 软无敌 + 短道具 + toast。
 4. XBuilder 已 Publish；Pages：`mobile-web/?v=reward1`。
+
+## 与 AdSense 的关系
+
+AdSense 只能接 **展示广告**（见 `docs/ADSENSE_GITHUB_PAGES.md`）。本文件的 `__RB_REWARDED_AD` **不要**用 AdSense 冒充激励视频。

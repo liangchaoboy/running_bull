@@ -75,6 +75,18 @@ XBuilder 发布页（`x.qiniu.com`）**不适合手机微信**。本目录需自
 
 部署后把正式试玩 URL 写回仓库 `README.md` 与 `docs/WECHAT_DISTRIBUTION.md`。
 
+
+## 广告（AdSense 展示 · 默认关闭）
+
+- 隐私 / 关于：`privacy.html`、`about.html`（标题页与结算页有链接）
+- 展示位占位：标题页、结算页；配置 `window.__RB_ADSENSE`（默认不加载脚本）
+- 撞障激励仍为 mock（`__RB_REWARDED_AD`）；**AdSense ≠ 激励视频**
+- 步骤与风险：仓库 `docs/ADSENSE_GITHUB_PAGES.md`
+- ads.txt：`mobile-web/ads.txt`（发布商行注释占位；正式需真实 pub + 最好用户站根 ads.txt）
+- 抽奖文案已标 **示意 / 非赌博**
+
+试玩：https://liangchaoboy.github.io/running_bull/mobile-web/?v=adsense1
+
 ## 与 XBuilder 版关系
 
 | | XBuilder 版 | 本手机网页版 |

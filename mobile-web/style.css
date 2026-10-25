@@ -1264,3 +1264,83 @@ html, body {
   from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* --- AdSense display slots (placeholders until enabled) --- */
+.ad-slot {
+  margin: 10px 0 12px;
+  min-height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+}
+.ad-slot-over {
+  margin: 8px 0 10px;
+  min-height: 64px;
+}
+.ad-slot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 12px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.4;
+}
+.ad-slot-badge {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.35);
+  text-transform: uppercase;
+}
+.ad-slot-disabled .ad-slot-placeholder {
+  opacity: 0.95;
+}
+.about-blurb {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(241, 245, 249, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 12px;
+  line-height: 1.5;
+  color: #475569;
+  text-align: left;
+}
+.about-blurb a {
+  color: #0369a1;
+  font-weight: 600;
+}
+#app[data-theme="space"] .about-blurb {
+  background: rgba(252, 231, 243, 0.55);
+  border-color: rgba(233, 168, 212, 0.55);
+  color: #6b2148;
+}
+.legal-links {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+.legal-links.compact {
+  margin-top: 10px;
+}
+.legal-links a {
+  color: #0369a1;
+  text-decoration: none;
+  font-weight: 600;
+}
+.legal-links a:hover {
+  text-decoration: underline;
+}
+.legal-note {
+  color: #94a3b8;
+}

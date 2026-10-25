@@ -132,18 +132,18 @@
 
   /** Activity prize + lottery (demo / 活动预告 — not real payout on Pages). */
   const PRIZE_CONFIG = {
-    label: "趣味抽奖",
-    title: "🎰 跑酷抽奖 · Top3 红包",
+    label: "趣味抽奖 · 示意/非赌",
+    title: "🎰 跑酷抽奖 · Top3 红包（示意）",
     amounts: [100, 50, 20],
     currency: "¥",
     realPayout: false,
     /** Exact poster lines (monetization-approved). */
     posterLines: [
-      "玩满 2 分钟 或金币 ≥200 即可抽奖",
+      "【示意 / 非赌博】玩满 2 分钟 或金币 ≥200 即可抽奖",
       "玩越久、金币越多，抽奖券越多（最多 8 张）",
       "每人每天 1 次；公平防刷，勇敢牛牛不怕困难",
     ],
-    rule: "玩满2分钟或金币达标可抽奖，越多越容易中 · Top3 另发红包",
+    rule: "示意/非赌 · 玩满2分钟或金币达标可抽 · Top3 另发红包（非正式）",
     lottery: {
       entryPlaySec: 120,
       entryCoins: 200,
@@ -643,7 +643,7 @@
       "</div>" +
       '<p class="prize-rule">' +
       PRIZE_CONFIG.rule +
-      (PRIZE_CONFIG.realPayout ? "" : " · 示意金额，正式发放待活动后端") +
+      (PRIZE_CONFIG.realPayout ? "" : " · 示意金额 / 非赌博 · 正式发放待活动后端") +
       "</p>" +
       '<button type="button" class="lottery-btn' +
       (canDraw ? "" : " lottery-btn-disabled") +
@@ -1705,6 +1705,98 @@
     }
   }
 
+  /**
+   * AdSense display ads (NOT rewarded).
+   * Stays no-op until window.__RB_ADSENSE.enabled === true and client is a real ca-pub-…
+   * Fake publisher ids must never be used — violates AdSense policy.
+   */
+  function getAdsenseConfig() {
+    const cfg = window.__RB_ADSENSE || {};
+    return {
+      enabled: !!cfg.enabled,
+      client: typeof cfg.client === "string" ? cfg.client.trim() : "",
+      slots: cfg.slots || {},
+      loadScript: !!cfg.loadScript,
+      provider: cfg.provider || "adsense-display",
+    };
+  }
+
+  function isAdsenseClientReady(cfg) {
+    const c = cfg.client || "";
+    if (!cfg.enabled) return false;
+    if (!/^ca-pub-\d{10,20}$/.test(c)) return false;
+    if (/X{4,}/i.test(c) || c.indexOf("XXXXXXXX") >= 0) return false;
+    return true;
+  }
+
+  function ensureAdsenseScript(client) {
+    if (typeof document === "undefined") return;
+    if (document.querySelector('script[data-rb-adsense="1"]')) return;
+    const host = (location && location.hostname) || "";
+    const isLocal =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "" ||
+      host === "0.0.0.0";
+    if (isLocal) {
+      console.info("[RB_ADSENSE] skip script on localhost");
+      return;
+    }
+    const s = document.createElement("script");
+    s.async = true;
+    s.src =
+      "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" +
+      encodeURIComponent(client);
+    s.crossOrigin = "anonymous";
+    s.setAttribute("data-rb-adsense", "1");
+    document.head.appendChild(s);
+  }
+
+  /**
+   * Refresh / fill a display slot by data-ad-slot name ("menu" | "result").
+   * Without enabled+real client: leave HTML placeholder visible.
+   */
+  function showDisplayAd(slotName) {
+    const cfg = getAdsenseConfig();
+    const el = document.querySelector('[data-ad-slot="' + slotName + '"]');
+    if (!el) return { ok: false, reason: "no-slot" };
+    if (!isAdsenseClientReady(cfg)) {
+      el.classList.add("ad-slot-disabled");
+      return { ok: false, reason: "disabled", provider: cfg.provider };
+    }
+    if (cfg.loadScript) ensureAdsenseScript(cfg.client);
+    const slotId = (cfg.slots && cfg.slots[slotName]) || "";
+    if (!slotId) {
+      console.info("[RB_ADSENSE] enabled but slots." + slotName + " empty");
+      return { ok: false, reason: "no-slot-id" };
+    }
+    // Replace placeholder once
+    if (!el.getAttribute("data-rb-ad-filled")) {
+      el.innerHTML =
+        '<ins class="adsbygoogle" style="display:block" data-ad-client="' +
+        cfg.client +
+        '" data-ad-slot="' +
+        slotId +
+        '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+      el.setAttribute("data-rb-ad-filled", "1");
+      el.classList.remove("ad-slot-disabled");
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (err) {
+        console.warn("[RB_ADSENSE] push failed", err);
+      }
+    }
+    return { ok: true, provider: "adsense-display", slot: slotName };
+  }
+
+  function refreshDisplayAds() {
+    showDisplayAd("menu");
+    showDisplayAd("result");
+  }
+
+  window.__RB_SHOW_DISPLAY_AD = showDisplayAd;
+  window.__RB_REFRESH_DISPLAY_ADS = refreshDisplayAds;
+
   /** Public hook — host can overwrite with real SDK. */
   window.__RB_REWARDED_AD = {
     show: function (opts) {
@@ -1854,6 +1946,9 @@
     saveLotteryState(st);
     renderLeaderboards();
     renderPrizeBanners({ playSec: sessionPlaySec, coins: coins, score: score });
+    try {
+      showDisplayAd("result");
+    } catch (e) {}
     overEl.classList.remove("hidden");
     overEl.classList.add("show-over");
   }
@@ -4510,6 +4605,9 @@
   currentUser = loadUser();
   window.__RB_LB = loadLb();
   renderPrizeBanners();
+  try {
+    refreshDisplayAds();
+  } catch (e) {}
   renderAuth();
   renderLeaderboards();
 
