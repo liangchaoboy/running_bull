@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-25（触控手感 + 微信登录 / 排行 / Top3 奖金）
+
+- **换道更跟手**：滑动阈值 40→18px；`pointermove` 即时换道（可连滑）；`LANE_SNAP` 0.58 + `LANE_LERP` 30；触控 `passive:false` + `preventDefault`。
+- **微信登录（演示）**：标题页「微信登录」→ 昵称/头像 mock；`localStorage` 持久化；预留 `window.__RB_WECHAT_OAUTH` 接真授权。
+- **记录**：得分榜 + 最长游玩榜（本机）；结算写入并展示「我的最佳」。
+- **Top3 现金奖励广告**：标题/结算展示 ¥100/¥50/¥20（`PRIZE_CONFIG`，标活动预告）；文档 [`WECHAT_LOGIN_LEADERBOARD.md`](WECHAT_LOGIN_LEADERBOARD.md)。
+- 仅改 `mobile-web/` + docs；**未动 XBuilder**。
+
+
+
 ## 2026-10-25（手机网页跳跃手感）
 
 - 调松跳跃：`JUMP_DURATION` 0.55→0.82、`JUMP_HEIGHT` 90→125；碰撞区收窄 0.68–0.84；加跳缓冲/落地宽限，开局速度下也能跳过普通障碍（仍需时机）。XBuilder 桌面版未改，如需另调。

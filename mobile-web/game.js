@@ -18,6 +18,25 @@
   const btnBomb = document.getElementById("btn-bomb");
   const modePick = document.getElementById("mode-pick");
   const themeMeta = document.querySelector('meta[name="theme-color"]');
+  const authBar = document.getElementById("auth-bar");
+  const btnWechat = document.getElementById("btn-wechat-login");
+  const btnLogout = document.getElementById("btn-logout");
+  const authProfile = document.getElementById("auth-profile");
+  const authNick = document.getElementById("auth-nick");
+  const authAvatar = document.getElementById("auth-avatar");
+  const loginModal = document.getElementById("login-modal");
+  const loginNick = document.getElementById("login-nick");
+  const loginAvatar = document.getElementById("login-avatar");
+  const btnLoginConfirm = document.getElementById("btn-login-confirm");
+  const btnLoginCancel = document.getElementById("btn-login-cancel");
+  const btnLoginGuest = document.getElementById("btn-login-guest");
+  const prizeMenu = document.getElementById("prize-banner");
+  const prizeOver = document.getElementById("prize-banner-over");
+  const lbScoreEl = document.getElementById("lb-score");
+  const lbTimeEl = document.getElementById("lb-time");
+  const lbMineEl = document.getElementById("lb-mine");
+  const overLbEl = document.getElementById("over-lb");
+  const overPlaytimeEl = document.getElementById("over-playtime");
 
   const W = 420;
   const H = 740;
@@ -31,6 +50,27 @@
   const JUMP_LAND_GRACE = 0.12;
   const HIT_Z_MIN = 0.68;
   const HIT_Z_MAX = 0.84;
+  /** Lane visual follow: higher = snappier (was ~14). */
+  const LANE_LERP = 30;
+  /** Immediate snap fraction on lane change so first frame moves. */
+  const LANE_SNAP = 0.58;
+  /** Swipe axis threshold in CSS px (was 40). */
+  const SWIPE_AXIS_MIN = 18;
+  const SWIPE_TAP_MAX = 22;
+  const SWIPE_TAP_MS = 320;
+
+  /** Activity prize amounts (edit here). Demo / 活动预告 — not real payout on Pages. */
+  const PRIZE_CONFIG = {
+    label: "活动预告",
+    rule: "按最高分 Top3 发奖；另展示最长游玩榜",
+    amounts: [100, 50, 20],
+    currency: "¥",
+    realPayout: false,
+  };
+
+  const LS_USER = "rb_user_v1";
+  const LS_LB = "rb_leaderboard_v1";
+  const LB_MAX = 20;
 
   /** @type {"earth"|"space"} */
   let mode = "earth";
@@ -49,6 +89,9 @@
   let coinAcc = 0;
   let runPhase = 0;
   let animTime = 0;
+  let sessionPlaySec = 0;
+  /** @type {{id:string,nickname:string,avatar:string,provider:string}|null} */
+  let currentUser = null;
 
   const player = {
     lane: 1,
@@ -75,6 +118,278 @@
     spd: 0.015 + Math.random() * 0.04,
     hue: Math.random() < 0.35 ? "pink" : Math.random() < 0.5 ? "lavender" : "white",
   }));
+
+  // --- Identity / leaderboard (Pages: localStorage; plug real WeChat later) ---
+  function uid() {
+    return "m_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  }
+
+  function loadUser() {
+    try {
+      const raw = localStorage.getItem(LS_USER);
+      if (!raw) return null;
+      const u = JSON.parse(raw);
+      if (!u || !u.id || !u.nickname) return null;
+      return u;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveUser(u) {
+    currentUser = u;
+    if (u) localStorage.setItem(LS_USER, JSON.stringify(u));
+    else localStorage.removeItem(LS_USER);
+    renderAuth();
+  }
+
+  /**
+   * Future: redirect to WeChat OAuth (snsapi_userinfo), backend exchanges code → openid.
+   * On GitHub Pages there is no backend, so we only mock.
+   */
+  function beginWeChatLogin() {
+    if (typeof window.__RB_WECHAT_OAUTH === "function") {
+      window.__RB_WECHAT_OAUTH();
+      return;
+    }
+    openLoginModal();
+  }
+
+  function openLoginModal() {
+    if (!loginModal) return;
+    loginModal.classList.remove("hidden");
+    if (loginNick) {
+      loginNick.value = (currentUser && currentUser.nickname) || "";
+      loginNick.focus();
+    }
+    if (loginAvatar) loginAvatar.value = (currentUser && currentUser.avatar) || "";
+  }
+
+  function closeLoginModal() {
+    if (loginModal) loginModal.classList.add("hidden");
+  }
+
+  function confirmMockLogin(asGuest) {
+    let nick = (loginNick && loginNick.value.trim()) || "";
+    let avatar = (loginAvatar && loginAvatar.value.trim()) || "";
+    if (asGuest || !nick) {
+      const n = Math.floor(1000 + Math.random() * 9000);
+      nick = "微信玩家" + n;
+      avatar = "";
+    }
+    const prev = currentUser;
+    const id = prev && prev.provider === "mock" ? prev.id : uid();
+    saveUser({
+      id,
+      openid: id,
+      nickname: nick.slice(0, 16),
+      avatar: avatar.slice(0, 300),
+      provider: "mock",
+      boundWeChat: false,
+    });
+    closeLoginModal();
+    renderLeaderboards();
+  }
+
+  function logout() {
+    saveUser(null);
+    renderLeaderboards();
+  }
+
+  function emptyLb() {
+    return { byScore: [], byPlayTime: [] };
+  }
+
+  function loadLb() {
+    try {
+      const raw = localStorage.getItem(LS_LB);
+      if (!raw) return emptyLb();
+      const data = JSON.parse(raw);
+      return {
+        byScore: Array.isArray(data.byScore) ? data.byScore : [],
+        byPlayTime: Array.isArray(data.byPlayTime) ? data.byPlayTime : [],
+      };
+    } catch (_) {
+      return emptyLb();
+    }
+  }
+
+  function saveLb(data) {
+    localStorage.setItem(LS_LB, JSON.stringify(data));
+    window.__RB_LB = data;
+  }
+
+  function upsertRecord(list, entry, key, max) {
+    const i = list.findIndex((r) => r.id === entry.id);
+    if (i >= 0) {
+      if (entry[key] > list[i][key]) {
+        list[i] = { ...list[i], ...entry, updatedAt: Date.now() };
+      } else {
+        list[i] = {
+          ...list[i],
+          nickname: entry.nickname,
+          avatar: entry.avatar,
+        };
+      }
+    } else {
+      list.push({ ...entry, updatedAt: Date.now() });
+    }
+    list.sort((a, b) => b[key] - a[key] || (b.updatedAt || 0) - (a.updatedAt || 0));
+    return list.slice(0, max);
+  }
+
+  function recordRun(finalScore, playSec) {
+    const user = currentUser || {
+      id: "guest_local",
+      nickname: "游客",
+      avatar: "",
+      provider: "guest",
+    };
+    const entry = {
+      id: user.id,
+      nickname: user.nickname,
+      avatar: user.avatar || "",
+      score: Math.max(0, Math.floor(finalScore)),
+      playTime: Math.max(0, Math.round(playSec * 10) / 10),
+    };
+    const lb = loadLb();
+    lb.byScore = upsertRecord(lb.byScore, entry, "score", LB_MAX);
+    lb.byPlayTime = upsertRecord(lb.byPlayTime, entry, "playTime", LB_MAX);
+    saveLb(lb);
+    return lb;
+  }
+
+  function formatTime(sec) {
+    const s = Math.max(0, Math.floor(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m > 0 ? m + "分" + String(r).padStart(2, "0") + "秒" : r + "秒";
+  }
+
+  function renderPrizeBanners() {
+    const html =
+      '<div class="prize-title">🏆 Top 3 现金奖励 <span class="prize-tag">' +
+      PRIZE_CONFIG.label +
+      "</span></div>" +
+      '<ol class="prize-list">' +
+      PRIZE_CONFIG.amounts
+        .map(
+          (amt, i) =>
+            "<li><span class=\"prize-rank\">第" +
+            (i + 1) +
+            "名</span> <strong>" +
+            PRIZE_CONFIG.currency +
+            amt +
+            "</strong></li>"
+        )
+        .join("") +
+      "</ol>" +
+      '<p class="prize-rule">' +
+      PRIZE_CONFIG.rule +
+      (PRIZE_CONFIG.realPayout ? "" : " · 示意金额，正式发放待活动后端") +
+      "</p>";
+    if (prizeMenu) prizeMenu.innerHTML = html;
+    if (prizeOver) prizeOver.innerHTML = html;
+  }
+
+  function renderLbList(el, rows, key, labelFn) {
+    if (!el) return;
+    if (!rows.length) {
+      el.innerHTML = '<li class="lb-empty">暂无记录，跑一局上榜</li>';
+      return;
+    }
+    el.innerHTML = rows
+      .slice(0, 5)
+      .map((r, i) => {
+        const mine = currentUser && r.id === currentUser.id ? " mine" : "";
+        return (
+          '<li class="lb-row' +
+          mine +
+          '"><span class="lb-rank">' +
+          (i + 1) +
+          '</span><span class="lb-name">' +
+          escapeHtml(r.nickname) +
+          '</span><span class="lb-val">' +
+          labelFn(r[key]) +
+          "</span></li>"
+        );
+      })
+      .join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function myBest() {
+    if (!currentUser) return null;
+    const lb = loadLb();
+    const s = lb.byScore.find((r) => r.id === currentUser.id);
+    const t = lb.byPlayTime.find((r) => r.id === currentUser.id);
+    return {
+      score: s ? s.score : 0,
+      playTime: t ? t.playTime : 0,
+    };
+  }
+
+  function renderLeaderboards() {
+    const lb = loadLb();
+    window.__RB_LB = lb;
+    renderLbList(lbScoreEl, lb.byScore, "score", (v) => String(v));
+    renderLbList(lbTimeEl, lb.byPlayTime, "playTime", formatTime);
+    if (lbMineEl) {
+      const best = myBest();
+      if (currentUser && best) {
+        lbMineEl.textContent =
+          "我的最佳：得分 " + best.score + " · 最长 " + formatTime(best.playTime);
+        lbMineEl.classList.remove("hidden");
+      } else {
+        lbMineEl.textContent = "登录后记录你的得分与游玩时长";
+        lbMineEl.classList.remove("hidden");
+      }
+    }
+    if (overLbEl) {
+      const top = lb.byScore.slice(0, 3);
+      overLbEl.innerHTML = top.length
+        ? "高分榜 " +
+          top
+            .map((r, i) => i + 1 + "." + escapeHtml(r.nickname) + " " + r.score)
+            .join(" · ")
+        : "";
+    }
+  }
+
+  function renderAuth() {
+    if (!authBar) return;
+    if (currentUser) {
+      if (btnWechat) btnWechat.classList.add("hidden");
+      if (authProfile) authProfile.classList.remove("hidden");
+      if (authNick) authNick.textContent = currentUser.nickname;
+      if (authAvatar) {
+        if (currentUser.avatar) {
+          authAvatar.src = currentUser.avatar;
+          authAvatar.classList.remove("hidden");
+        } else {
+          authAvatar.removeAttribute("src");
+          authAvatar.classList.add("hidden");
+        }
+      }
+    } else {
+      if (btnWechat) btnWechat.classList.remove("hidden");
+      if (authProfile) authProfile.classList.add("hidden");
+    }
+  }
+
+  window.__RB_PRIZE = PRIZE_CONFIG;
+  window.__RB_AUTH = {
+    getUser: () => currentUser,
+    loginMock: beginWeChatLogin,
+    logout,
+  };
 
   function setMode(next) {
     if (next !== "earth" && next !== "space") return;
@@ -145,6 +460,7 @@
     spawnAcc = 0.4;
     coinAcc = 0.2;
     runPhase = 0;
+    sessionPlaySec = 0;
     player.lane = 1;
     player.displayLane = 1;
     player.jumpT = 0;
@@ -180,7 +496,10 @@
   function changeLane(dir) {
     if (!running || dead) return;
     const next = Math.max(0, Math.min(LANES - 1, player.lane + dir));
+    if (next === player.lane) return;
     player.lane = next;
+    // Immediate visual response, then LANE_LERP eases the rest.
+    player.displayLane += (player.lane - player.displayLane) * LANE_SNAP;
   }
 
   function jump() {
@@ -265,6 +584,9 @@
     document.getElementById("over-dist").textContent = String(Math.floor(distance));
     document.getElementById("over-coins").textContent = String(coins);
     document.getElementById("over-score").textContent = String(score);
+    if (overPlaytimeEl) overPlaytimeEl.textContent = formatTime(sessionPlaySec);
+    recordRun(score, sessionPlaySec);
+    renderLeaderboards();
     overEl.classList.remove("hidden");
   }
 
@@ -277,8 +599,9 @@
     roadScroll += speed * dt;
     distance += (speed * dt) / 18;
     runPhase += dt * (speed / 80);
+    sessionPlaySec += dt;
 
-    player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * 14);
+    player.displayLane += (player.lane - player.displayLane) * Math.min(1, dt * LANE_LERP);
 
     if (player.jumpBuffered > 0) player.jumpBuffered -= dt;
     if (player.landGrace > 0) player.landGrace -= dt;
@@ -930,38 +1253,94 @@
   let touchStartY = 0;
   let touchStartT = 0;
   let swipeUsed = false;
+  let swipeOriginX = 0;
+  let swipeOriginY = 0;
+  let activePointerId = null;
+
+  function onSwipeAxis(dx, dy) {
+    if (!running || dead || swipeUsed) return false;
+    if (Math.abs(dx) >= SWIPE_AXIS_MIN && Math.abs(dx) > Math.abs(dy) * 0.85) {
+      changeLane(dx > 0 ? 1 : -1);
+      // Allow another lane change after finger travels further (chained swipe).
+      swipeOriginX += dx;
+      swipeOriginY += dy;
+      touchStartT = 0; // consumed — no tap-jump on release
+      return "lane";
+    }
+    if (dy <= -SWIPE_AXIS_MIN && Math.abs(dy) > Math.abs(dx) * 0.85) {
+      jump();
+      swipeUsed = true; // one jump per gesture
+      touchStartT = 0;
+      return "jump";
+    }
+    return false;
+  }
 
   canvas.addEventListener(
     "pointerdown",
     (ev) => {
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
       touchStartX = ev.clientX;
       touchStartY = ev.clientY;
+      swipeOriginX = touchStartX;
+      swipeOriginY = touchStartY;
       touchStartT = performance.now();
       swipeUsed = false;
-      canvas.setPointerCapture(ev.pointerId);
+      activePointerId = ev.pointerId;
+      try {
+        canvas.setPointerCapture(ev.pointerId);
+      } catch (_) {}
+      if (ev.cancelable) ev.preventDefault();
     },
-    { passive: true }
+    { passive: false }
   );
 
   canvas.addEventListener(
-    "pointerup",
+    "pointermove",
     (ev) => {
-      const dx = ev.clientX - touchStartX;
-      const dy = ev.clientY - touchStartY;
-      const dt = performance.now() - touchStartT;
-      if (!running) return;
-      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-        changeLane(dx > 0 ? 1 : -1);
-        swipeUsed = true;
-      } else if (dy < -40 && Math.abs(dy) > Math.abs(dx)) {
-        jump();
-        swipeUsed = true;
-      } else if (!swipeUsed && dt < 350 && Math.hypot(dx, dy) < 24) {
-        const rect = canvas.getBoundingClientRect();
-        if (ev.clientY - rect.top < rect.height * 0.55) jump();
-      }
+      if (activePointerId !== null && ev.pointerId !== activePointerId) return;
+      if (!running || dead) return;
+      // Fire as soon as threshold is crossed — do not wait for pointerup.
+      const dx = ev.clientX - swipeOriginX;
+      const dy = ev.clientY - swipeOriginY;
+      onSwipeAxis(dx, dy);
+      if (ev.cancelable) ev.preventDefault();
     },
-    { passive: true }
+    { passive: false }
+  );
+
+  function endPointer(ev) {
+    if (activePointerId !== null && ev.pointerId !== activePointerId) return;
+    const dx = ev.clientX - touchStartX;
+    const dy = ev.clientY - touchStartY;
+    const dtMs = touchStartT ? performance.now() - touchStartT : 9999;
+    if (running && !dead && touchStartT && dtMs < SWIPE_TAP_MS && Math.hypot(dx, dy) < SWIPE_TAP_MAX) {
+      const rect = canvas.getBoundingClientRect();
+      if (ev.clientY - rect.top < rect.height * 0.55) jump();
+    }
+    activePointerId = null;
+    try {
+      canvas.releasePointerCapture(ev.pointerId);
+    } catch (_) {}
+  }
+
+  canvas.addEventListener("pointerup", endPointer, { passive: false });
+  canvas.addEventListener("pointercancel", endPointer, { passive: false });
+
+  // Extra touch listeners for WeChat WebView scroll cancellation.
+  canvas.addEventListener(
+    "touchstart",
+    (ev) => {
+      if (ev.cancelable) ev.preventDefault();
+    },
+    { passive: false }
+  );
+  canvas.addEventListener(
+    "touchmove",
+    (ev) => {
+      if (ev.cancelable) ev.preventDefault();
+    },
+    { passive: false }
   );
 
   window.addEventListener("keydown", (ev) => {
@@ -1004,6 +1383,32 @@
 
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", () => setTimeout(resize, 120));
+
+  if (btnWechat) btnWechat.addEventListener("click", beginWeChatLogin);
+  if (btnLogout) btnLogout.addEventListener("click", logout);
+  if (btnLoginConfirm) {
+    btnLoginConfirm.addEventListener("click", () => confirmMockLogin(false));
+  }
+  if (btnLoginGuest) {
+    btnLoginGuest.addEventListener("click", () => confirmMockLogin(true));
+  }
+  if (btnLoginCancel) btnLoginCancel.addEventListener("click", closeLoginModal);
+  if (loginModal) {
+    loginModal.addEventListener("click", (ev) => {
+      if (ev.target === loginModal) closeLoginModal();
+    });
+  }
+  if (loginNick) {
+    loginNick.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") confirmMockLogin(false);
+    });
+  }
+
+  currentUser = loadUser();
+  window.__RB_LB = loadLb();
+  renderPrizeBanners();
+  renderAuth();
+  renderLeaderboards();
 
   setMode("earth");
   resize();

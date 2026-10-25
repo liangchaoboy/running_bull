@@ -42,6 +42,17 @@
         <h1>天天跑酷</h1>
         <p class="hint">选地图 · 三道换道 · 点跳 · 捡金币 · 丢炸弹</p>
 
+        <div id="prize-banner" class="prize-banner" aria-label="Top3 现金奖励"></div>
+
+        <div id="auth-bar" class="auth-bar">
+          <button type="button" id="btn-wechat-login" class="wechat-btn">微信登录</button>
+          <div id="auth-profile" class="auth-profile hidden">
+            <img id="auth-avatar" class="auth-avatar hidden" alt="" width="32" height="32" />
+            <span id="auth-nick" class="auth-nick"></span>
+            <button type="button" id="btn-logout" class="linkish">退出</button>
+          </div>
+        </div>
+
         <div id="mode-pick" role="group" aria-label="选择地图">
           <button type="button" class="mode-card selected" data-mode="earth" aria-pressed="true">
             <span class="mode-emoji" aria-hidden="true">🛤️</span>
@@ -60,6 +71,19 @@
           <li>中间「跳」或上滑 / 点屏幕上半 = 起跳</li>
           <li>💣 清当前道障碍（有冷却）</li>
         </ul>
+
+        <div class="lb-panel" aria-label="排行榜">
+          <div class="lb-col">
+            <h3>得分榜</h3>
+            <ol id="lb-score" class="lb-list"></ol>
+          </div>
+          <div class="lb-col">
+            <h3>最长游玩</h3>
+            <ol id="lb-time" class="lb-list"></ol>
+          </div>
+        </div>
+        <p id="lb-mine" class="lb-mine"></p>
+
         <button type="button" id="btn-start" class="primary">开始跑</button>
       </div>
     </div>
@@ -70,8 +94,30 @@
         <h2>撞到了！</h2>
         <p class="result">距离 <strong id="over-dist">0</strong> · 金币 <strong id="over-coins">0</strong></p>
         <p class="result score">得分 <strong id="over-score">0</strong></p>
+        <p class="result">本局时长 <strong id="over-playtime">0秒</strong></p>
+        <div id="prize-banner-over" class="prize-banner compact" aria-label="Top3 现金奖励"></div>
+        <p id="over-lb" class="over-lb"></p>
         <button type="button" id="btn-retry" class="primary">再来一局</button>
         <button type="button" id="btn-change-mode" class="ghost">换地图</button>
+      </div>
+    </div>
+
+    <div id="login-modal" class="login-modal hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <div class="login-card">
+        <h2 id="login-title">微信登录</h2>
+        <p class="login-note">当前为 <strong>演示登录</strong>（GitHub Pages 无后端）。正式微信网页授权需公众号/开放平台 appId + 后端换 openid；上七牛 Kodo+CDN 后再接。</p>
+        <label class="field">
+          <span>昵称</span>
+          <input id="login-nick" type="text" maxlength="16" placeholder="显示在排行榜" autocomplete="nickname" />
+        </label>
+        <label class="field">
+          <span>头像 URL（可选）</span>
+          <input id="login-avatar" type="url" maxlength="300" placeholder="https://..." inputmode="url" />
+        </label>
+        <button type="button" id="btn-login-confirm" class="primary wechat-confirm">确认登录</button>
+        <button type="button" id="btn-login-guest" class="ghost">随机游客昵称</button>
+        <button type="button" id="btn-login-cancel" class="ghost">取消</button>
+        <p class="login-foot">以后可在此入口换成真实「绑定微信」OAuth。</p>
       </div>
     </div>
   </div>
