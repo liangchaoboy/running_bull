@@ -10,13 +10,15 @@
 | 身份持久化 | `localStorage` 键 `rb_user_v1`（`id`/`openid`、`nickname`、`avatar`、`provider: mock`） |
 | 得分 / 最长游玩 | 每局结算写入 `rb_leaderboard_v1`：`byScore`、`byPlayTime`（各最多 20） |
 | 页面广告 Top3 奖金 | 标题页 + 结算页展示；金额在 `game.js` 的 `PRIZE_CONFIG.amounts`（默认 ¥100 / ¥50 / ¥20） |
-| 发奖规则文案 | **按最高分 Top3 发奖**；另展示最长游玩榜。`realPayout: false` 时标「活动预告 / 示意」 |
+| 趣味抽奖海报 | 三行准入文案 + 灰按钮「再跑一会儿再来抽」；规则见 [`LOTTERY_RULES.md`](LOTTERY_RULES.md) |
+| 发奖规则文案 | 玩满 2 分钟或金币 ≥200 可抽奖，越多券越多（W≤8）；Top3 另发红包。`realPayout: false` 时标示意 |
 
 调试钩子：
 
 - `window.__RB_AUTH` — `getUser()` / `loginMock()` / `logout()`
 - `window.__RB_LB` — 当前排行榜对象
-- `window.__RB_PRIZE` — 奖金配置
+- `window.__RB_PRIZE` — 奖金 / 抽奖海报配置
+- `window.__RB_LOTTERY` — `tickets()` / 本地日限状态（示意）
 - 可选：挂 `window.__RB_WECHAT_OAUTH = function () { ... }` 后，「微信登录」会走你的真授权跳转，而不再开演示框
 
 ## 正式微信网页授权（待后端）
@@ -35,13 +37,17 @@
 
 ```js
 const PRIZE_CONFIG = {
-  label: "活动预告",
-  rule: "按最高分 Top3 发奖；另展示最长游玩榜",
-  amounts: [100, 50, 20], // ← 改这里
+  label: "趣味抽奖",
+  title: "🎰 跑酷抽奖 · Top3 红包",
+  amounts: [100, 50, 20], // ← Top3 金额
   currency: "¥",
   realPayout: false,
+  posterLines: [ /* 三行海报，见 LOTTERY_RULES.md */ ],
+  lottery: { entryPlaySec: 120, entryCoins: 200, ticketSoftCap: 8, /* ... */ },
 };
 ```
+
+抽奖公式与日限详见 [`LOTTERY_RULES.md`](LOTTERY_RULES.md)。
 
 ## 手感（换道）
 

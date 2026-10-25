@@ -115,14 +115,108 @@
   const SWIPE_TAP_MAX = 22;
   const SWIPE_TAP_MS = 320;
 
-  /** Activity prize amounts (edit here). Demo / 活动预告 — not real payout on Pages. */
+  /** Activity prize + lottery (demo / 活动预告 — not real payout on Pages). */
   const PRIZE_CONFIG = {
-    label: "活动预告",
-    rule: "按最高分 Top3 发奖；另展示最长游玩榜",
+    label: "趣味抽奖",
+    title: "🎰 跑酷抽奖 · Top3 红包",
     amounts: [100, 50, 20],
     currency: "¥",
     realPayout: false,
+    /** Exact poster lines (monetization-approved). */
+    posterLines: [
+      "玩满 2 分钟 或金币 ≥200 即可抽奖",
+      "玩越久、金币越多，抽奖券越多（最多 8 张）",
+      "每人每天 1 次；公平防刷，勇敢牛牛不怕困难",
+    ],
+    rule: "玩满2分钟或金币达标可抽奖，越多越容易中 · Top3 另发红包",
+    lottery: {
+      entryPlaySec: 120,
+      entryCoins: 200,
+      ticketSoftCap: 8,
+      dailyDrawLimit: 1,
+      dailyPlayCapMin: 15,
+      ineligibleLabel: "再跑一会儿再来抽",
+      eligibleLabel: "🎰 开心抽一发",
+    },
   };
+
+  const LS_LOTTERY = "rb_lottery_v1";
+
+  /** Activity coins: prefer run coins; fallback ≈ score÷10. */
+  function activityCoins(runCoins, runScore) {
+    if (runCoins != null && !Number.isNaN(Number(runCoins))) {
+      return Math.max(0, Math.floor(Number(runCoins)));
+    }
+    if (runScore != null && runScore > 0) return Math.max(0, Math.floor(runScore / 10));
+    return 0;
+  }
+
+  /**
+   * Ticket count W after qualify (local mock; see docs/LOTTERY_RULES.md).
+   * T = min(1 + 0.5*(t_min-2), 5) for t≥2min (daily play for tickets capped 15min)
+   * C = min(floor(g/100), 5)
+   * W = min(T+C, 8); base 1 after qualify via T at 2min.
+   */
+  function lotteryTickets(playSec, gCoins) {
+    const L = PRIZE_CONFIG.lottery;
+    const g = Math.max(0, Math.floor(gCoins || 0));
+    const tSec = Math.max(0, playSec || 0);
+    const qualifies = tSec >= L.entryPlaySec || g >= L.entryCoins;
+    if (!qualifies) return { qualifies: false, T: 0, C: 0, W: 0, tMin: 0, g: g };
+    const tMinRaw = tSec / 60;
+    const tMin = Math.min(tMinRaw, L.dailyPlayCapMin);
+    let T = 0;
+    if (tMin >= 2) T = Math.min(1 + 0.5 * (tMin - 2), 5);
+    const C = Math.min(Math.floor(g / 100), 5);
+    let W = Math.min(T + C, L.ticketSoftCap);
+    if (W < 1) W = 1; // base 1 after qualify
+    return { qualifies: true, T: Math.round(T * 100) / 100, C: C, W: W, tMin: Math.round(tMin * 100) / 100, g: g };
+  }
+
+  function lotteryDayKey() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  function loadLotteryState() {
+    try {
+      const raw = localStorage.getItem(LS_LOTTERY);
+      if (!raw) return { day: lotteryDayKey(), drawn: false, lastRun: null };
+      const o = JSON.parse(raw);
+      if (!o || o.day !== lotteryDayKey()) return { day: lotteryDayKey(), drawn: false, lastRun: o && o.lastRun ? o.lastRun : null };
+      return o;
+    } catch (e) {
+      return { day: lotteryDayKey(), drawn: false, lastRun: null };
+    }
+  }
+
+  function saveLotteryState(st) {
+    try {
+      localStorage.setItem(LS_LOTTERY, JSON.stringify(st));
+    } catch (e) {}
+  }
+
+  function bestLotteryStats() {
+    const st = loadLotteryState();
+    let playSec = st.lastRun && st.lastRun.playSec ? st.lastRun.playSec : 0;
+    let g = st.lastRun && st.lastRun.coins != null ? st.lastRun.coins : 0;
+    if (currentUser) {
+      const lb = loadLb();
+      const rows = []
+        .concat(lb.byPlayTime || [])
+        .concat(lb.byScore || []);
+      for (const r of rows) {
+        if (r.id !== currentUser.id) continue;
+        if (r.playTime != null) playSec = Math.max(playSec, r.playTime);
+        if (r.coins != null) g = Math.max(g, r.coins);
+        else if (r.score != null) g = Math.max(g, activityCoins(0, r.score));
+      }
+    }
+    return { playSec: playSec, coins: g };
+  }
 
   const LS_USER = "rb_user_v1";
   const LS_LB = "rb_leaderboard_v1";
@@ -375,6 +469,7 @@
       avatar: user.avatar || "",
       score: Math.max(0, Math.floor(finalScore)),
       playTime: Math.max(0, Math.round(playSec * 10) / 10),
+      coins: Math.max(0, Math.floor(coins)),
       mode: mode,
     };
     const lb = loadLb();
@@ -395,9 +490,28 @@
     return m > 0 ? m + "分" + String(r).padStart(2, "0") + "秒" : r + "秒";
   }
 
-  function renderPrizeBanners() {
+  function renderPrizeBanners(ctx) {
+    const L = PRIZE_CONFIG.lottery;
+    const stats = ctx || bestLotteryStats();
+    const g = activityCoins(stats.coins, stats.score);
+    const tick = lotteryTickets(stats.playSec || 0, g);
+    const st = loadLotteryState();
+    const canDraw = tick.qualifies && !st.drawn;
+    const wLabel = Number.isInteger(tick.W) ? String(tick.W) : String(Math.round(tick.W * 10) / 10);
+    const btnLabel = canDraw
+      ? L.eligibleLabel + "（约 " + wLabel + " 张券）"
+      : st.drawn
+        ? "今日已抽过，明天再来"
+        : L.ineligibleLabel;
+    const posterHtml = PRIZE_CONFIG.posterLines
+      .map(function (line) {
+        return '<p class="prize-poster">' + line + "</p>";
+      })
+      .join("");
     const html =
-      '<div class="prize-title">🏆 Top 3 现金奖励 <span class="prize-tag">' +
+      '<div class="prize-title">' +
+      PRIZE_CONFIG.title +
+      ' <span class="prize-tag">' +
       PRIZE_CONFIG.label +
       "</span></div>" +
       '<ol class="prize-list">' +
@@ -413,12 +527,85 @@
         )
         .join("") +
       "</ol>" +
+      '<div class="prize-poster-block" aria-label="抽奖海报">' +
+      posterHtml +
+      "</div>" +
       '<p class="prize-rule">' +
       PRIZE_CONFIG.rule +
       (PRIZE_CONFIG.realPayout ? "" : " · 示意金额，正式发放待活动后端") +
-      "</p>";
+      "</p>" +
+      '<button type="button" class="lottery-btn' +
+      (canDraw ? "" : " lottery-btn-disabled") +
+      '" data-lottery-btn ' +
+      (canDraw ? "" : "disabled ") +
+      'aria-disabled="' +
+      (canDraw ? "false" : "true") +
+      '">' +
+      btnLabel +
+      "</button>";
     if (prizeMenu) prizeMenu.innerHTML = html;
     if (prizeOver) prizeOver.innerHTML = html;
+    bindLotteryButtons(stats, tick, canDraw);
+  }
+
+  function bindLotteryButtons(stats, tick, canDraw) {
+    document.querySelectorAll("[data-lottery-btn]").forEach(function (btn) {
+      btn.onclick = function () {
+        if (!canDraw) return;
+        mockLotteryDraw(tick);
+      };
+    });
+  }
+
+  function mockLotteryDraw(tick) {
+    const st = loadLotteryState();
+    if (st.drawn) {
+      alert("今天已经抽过啦，明天再来～");
+      renderPrizeBanners();
+      return;
+    }
+    // Local mock weighted draw: consume all W tickets in one draw (no real backend).
+    const pool = [
+      { name: "谢谢参与", w: 40 },
+      { name: "再来一局好运贴", w: 25 },
+      { name: "小金币包", w: 20 },
+      { name: "¥20 红包券（示意）", w: 8 },
+      { name: "¥50 红包券（示意）", w: 5 },
+      { name: "¥100 红包券（示意）", w: 2 },
+    ];
+    const boost = Math.max(1, tick.W);
+    const weights = pool.map(function (p, i) {
+      // More tickets nudge toward better tiers slightly (mock only).
+      return p.w + (i >= 3 ? boost * 1.5 : 0);
+    });
+    let sum = 0;
+    for (let i = 0; i < weights.length; i++) sum += weights[i];
+    let r = Math.random() * sum;
+    let pick = pool[0];
+    for (let i = 0; i < pool.length; i++) {
+      r -= weights[i];
+      if (r <= 0) {
+        pick = pool[i];
+        break;
+      }
+    }
+    st.drawn = true;
+    st.day = lotteryDayKey();
+    st.lastPrize = pick.name;
+    st.lastW = tick.W;
+    saveLotteryState(st);
+    alert(
+      "本局券数 W=" +
+        tick.W +
+        "（时长券 T=" +
+        tick.T +
+        " + 金币券 C=" +
+        tick.C +
+        "）\n一次抽完 · 抽中：" +
+        pick.name +
+        "\n（本地示意，正式抽奖待活动后端）"
+    );
+    renderPrizeBanners();
   }
 
   function renderLbList(el, rows, key, labelFn) {
@@ -527,6 +714,12 @@
   }
 
   window.__RB_PRIZE = PRIZE_CONFIG;
+  window.__RB_LOTTERY = {
+    tickets: lotteryTickets,
+    activityCoins: activityCoins,
+    state: loadLotteryState,
+    config: PRIZE_CONFIG.lottery,
+  };
   window.__RB_AUTH = {
     getUser: () => currentUser,
     loginMock: beginWeChatLogin,
@@ -1317,7 +1510,16 @@
         mode === "chill" ? "CHILL OVER" : mode === "plant" ? "ZOMBIES WIN" : "GAME OVER";
     }
     recordRun(score, sessionPlaySec);
+    const st = loadLotteryState();
+    st.lastRun = {
+      playSec: sessionPlaySec,
+      coins: coins,
+      score: score,
+      at: Date.now(),
+    };
+    saveLotteryState(st);
     renderLeaderboards();
+    renderPrizeBanners({ playSec: sessionPlaySec, coins: coins, score: score });
     overEl.classList.remove("hidden");
     overEl.classList.add("show-over");
   }
