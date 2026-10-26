@@ -60,15 +60,15 @@ See `Road_road5.snippet.spx`:
 
 ## D. Publish checklist
 
-- [ ] Stage: road5 amps + Camera bob（洞 −38）+ sec broadcast
-- [ ] Heroes: curveBend*0.88 + sec say
-- [ ] Road: Brightness −85 / +16 + size cave 1.10
-- [ ] Smoke: **平路**弯道甩弯比换道抢眼（不靠桥）
-- [ ] Smoke: 进洞更暗更窄；拱/路心暗；下沉略强
-- [ ] Smoke: 桥抬升/观感与 road4 同档
-- [ ] Intact: BGM / mute / snap / plant / boost / 无道具钮
-- [ ] **Publish** same share link
-- [ ] Hard-refresh web `?v=road5`
+- [x] Stage: road5 amps + Camera bob（洞 −38）+ sec broadcast
+- [x] Heroes: curveBend*0.88 + sec say
+- [x] Road: Brightness −85 / +16 + size cave 1.10
+- [ ] Smoke: **平路**弯道甩弯比换道抢眼（不靠桥）— 待资深玩家验收
+- [ ] Smoke: 进洞更暗更窄；拱/路心暗；下沉略强 — 待资深玩家验收
+- [ ] Smoke: 桥抬升/观感与 road4 同档 — 待资深玩家验收
+- [x] Intact: BGM / mute / snap / plant / boost / 无道具钮
+- [x] **Publish** same share link（2026-10-26）
+- [x] Hard-refresh web `?v=road5`（Pages 已对齐 `4bb40ae`）
 
 ## E. Paths
 

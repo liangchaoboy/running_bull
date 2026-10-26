@@ -50,6 +50,8 @@ road4 泥土实机：桥 PASS、坡（上桥）PASS；**洞 FAIL**（绿肩+黑�
 见 `docs/xb_patches/road5/APPLY_ROAD5.md`（Stage amp + Camera bob；Hero lean；Road Brightness/size）。  
 镜像：`/workspace/xb_src/stage_ad.spx`、三英雄、`/workspace/xb_src/patches/road5/`。
 
+**状态（2026-10-26 上午）：** 同链已 Publish（amp130、curveBend×0.88、cave −85/size1.10）。网页 `?v=road5` 已上 Pages。待资深玩家验收洞/平路弯。
+
 ## Cache bust
 
 `mobile-web/index.html` → `?v=road5`（script + css）。
@@ -60,6 +62,7 @@ road4 泥土实机：桥 PASS、坡（上桥）PASS；**洞 FAIL**（绿肩+黑�
 - [ ] 过桥（~160）：仍窄堤+空隙+粗栏+抬升（与 road4 同档）
 - [ ] 进洞（~320）：两侧**实心岩壁贴路缘**（无绿肩/黑空）；近端路宽明显窄于 plain；拱门+路心暗仍在；下沉略强
 - [ ] 换道贴轨仍干脆；植物/BGM/静音/无道具钮仍在
-- [ ] **不** git push / **不** XB Publish（parent 粘贴 Publish 后再推）
+- [x] mobile-web 已推 `main` `4bb40ae` + Pages `?v=road5`
+- [x] XBuilder 同链已 Publish（2026-10-26）
 
-试玩（parent 推送后）：`https://liangchaoboy.github.io/running_bull/mobile-web/?v=road5`
+试玩：`https://liangchaoboy.github.io/running_bull/mobile-web/?v=road5`

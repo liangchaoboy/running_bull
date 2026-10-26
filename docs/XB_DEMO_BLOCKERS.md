@@ -2,7 +2,7 @@
 
 > 可玩 Demo **只能在 XBuilder 搭**；本仓库是文案包 + 逻辑测试。  
 > 用途：课前 / 评委前自检；阻塞解除后把 Publish URL 写回 README。  
-> 状态核实：2026-10-25 Asia/Shanghai。
+> 状态核实：2026-10-26 上午 Asia/Shanghai（road5 网页+XB 已上；洞/平路弯等人验收）。
 
 ---
 
