@@ -50,7 +50,7 @@ road4 泥土实机：桥 PASS、坡（上桥）PASS；**洞 FAIL**（绿肩+黑�
 见 `docs/xb_patches/road5/APPLY_ROAD5.md`（Stage amp + Camera bob；Hero lean；Road Brightness/size）。  
 镜像：`/workspace/xb_src/stage_ad.spx`、三英雄、`/workspace/xb_src/patches/road5/`。
 
-**状态（2026-10-26 上午）：** 同链已 Publish（amp130、curveBend×0.88、cave −85/size1.10）。网页 `?v=road5` 已上 Pages。待资深玩家验收洞/平路弯。
+**状态（2026-10-26 下午）：** 同链已 Publish（amp130、curveBend×0.88、cave −85/size1.10）。网页 `?v=road5`（`4bb40ae`）已上 Pages。**资深小游戏玩家土路实机验收：洞 PASS、平路弯 PASS、桥仍 OK。**
 
 ## Cache bust
 
@@ -58,10 +58,10 @@ road4 泥土实机：桥 PASS、坡（上桥）PASS；**洞 FAIL**（绿肩+黑�
 
 ## Smoke checklist
 
-- [ ] **平路**（泥土）：开跑 ~1s 内近场中线/边缘甩弯，比换道抢眼（不靠桥）
-- [ ] 过桥（~160）：仍窄堤+空隙+粗栏+抬升（与 road4 同档）
-- [ ] 进洞（~320）：两侧**实心岩壁贴路缘**（无绿肩/黑空）；近端路宽明显窄于 plain；拱门+路心暗仍在；下沉略强
-- [ ] 换道贴轨仍干脆；植物/BGM/静音/无道具钮仍在
+- [x] **平路**（泥土）：开跑 ~1s 内近场中线/边缘甩弯，比换道抢眼（不靠桥）— **PASS 2026-10-26**
+- [x] 过桥（~160）：仍窄堤+空隙+粗栏+抬升（与 road4 同档）— **仍 OK**
+- [x] 进洞（~320）：两侧**实心岩壁贴路缘**（无绿肩/黑空）；近端路宽明显窄于 plain；拱门+路心暗仍在；下沉略强 — **PASS 2026-10-26**
+- [x] 换道贴轨仍干脆；植物/BGM/静音/无道具钮仍在
 - [x] mobile-web 已推 `main` `4bb40ae` + Pages `?v=road5`
 - [x] XBuilder 同链已 Publish（2026-10-26）
 

@@ -1,3 +1,7 @@
+## 2026-10-26 · road5 验收 PASS
+
+- 资深小游戏玩家土路实机：洞 PASS、平路弯 PASS、桥仍 OK。网页 `4bb40ae` `?v=road5` + XB 同链 Publish 维持。下一档转 Demo 口述/擦边目视/竖屏素材/国内 CDN（见 [`XB_DEMO_BLOCKERS.md`](XB_DEMO_BLOCKERS.md)）。
+
 ## 2026-10-26 · road5（洞实心岩壁 + 平路甩弯）
 
 - road4 实机：洞 FAIL（绿肩+黑空、pinch 弱）、弯 FAIL（平路近场直）。改绘制：不透明岩壁贴路缘+近场高岩面+近端×0.34 pinch；平路 amp/深度 S 甩；洞下沉 +1 档；桥保持。`?v=road5`。XB：`docs/xb_patches/road5/APPLY_ROAD5.md`（**已 Publish** 同链，2026-10-26）。保留 ui1 / Bravery Run / LANE_SNAP / 植物 / playfix1。详见 [`ROAD5_NOTES.md`](ROAD5_NOTES.md)。

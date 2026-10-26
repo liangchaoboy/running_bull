@@ -2,7 +2,7 @@
 
 > 可玩 Demo **只能在 XBuilder 搭**；本仓库是文案包 + 逻辑测试。  
 > 用途：课前 / 评委前自检；阻塞解除后把 Publish URL 写回 README。  
-> 状态核实：2026-10-26 上午 Asia/Shanghai（road5 网页+XB 已上；洞/平路弯等人验收）。
+> 状态核实：2026-10-26 下午 Asia/Shanghai（road5 网页+XB 已上；土路实机：洞/平路弯 PASS、桥 OK）。
 
 ---
 
@@ -14,7 +14,26 @@
 | B2 | 账号能 **Publish** 出公网可开链接（手机+桌面） | Vincent / 平台权限 | ✅ 已验证：https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull |
 | B3 | 仓库推到 GitHub 活动主库 `neikochan/running_bull` | 需 push / collaborator | ⚠️ 主库已有「大角牛快跑」模板资产；`liangchaoboy` 仍仅 pull。玩法文档持续推 [liangchaoboy/running_bull](https://github.com/liangchaoboy/running_bull) `main`。**不阻塞** Demo 可玩 |
 
-本地已就绪：`docs/` + `growth/` 资产包；`npm test` → 15/15 通过。云端代理区域不可用 → **不作为** XBuilder 搭建路径。
+本地已就绪：`docs/` + `growth/` 资产包；`npm test` → 26/26 通过。云端代理区域不可用 → **不作为** XBuilder 搭建路径。
+
+### 道路可读性（road5，2026-10-26）
+
+| 项 | 状态 |
+|----|------|
+| 洞（实心岩壁贴路缘 + pinch） | ✅ 资深玩家土路 PASS |
+| 平路甩弯（不靠桥衬弯） | ✅ 资深玩家土路 PASS |
+| 桥（窄堤/空隙/栏/抬升） | ✅ 仍 OK |
+| Web `?v=road5` + XB 同链 Publish | ✅ `4bb40ae` / 已 Publish |
+
+**下一档（非道路）阻塞 / 待办：**
+
+| # | 项 | 谁解 | 状态 |
+|---|------|------|------|
+| N1 | 3 分钟口述按 `DEMO_SCRIPT.md` 跑通（含故意擦边 + 撞死） | Vincent / 助手陪跑 | ⏳ 待做 |
+| N2 | 擦边倍率单次 playtest 目视确认反馈 | 助手 / 资深玩家 | ⏳ 工程已就位，未目视确认 |
+| N3 | ≥1 条竖屏「最勇擦边」素材 | Vincent | ⏳ 未投流前必备 |
+| N4 | 国内主入口（Kodo/CDN 或自有域） | Vincent | ⏳ Pages 仅备用 |
+| N5 | `neikochan/running_bull` 写权限 | Vincent | ⚠️ 不阻塞可玩 Demo |
 
 ---
 

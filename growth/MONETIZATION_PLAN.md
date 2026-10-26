@@ -18,6 +18,7 @@
 ### 证据清单（演示前勾选）
 
 - [x] Publish 链接可打开（桌面 XBuilder 同链；手机用 Pages `?v=road5` / 自有 CDN）  
+- [x] 道路可读性 road5 土路验收 PASS（洞/平路弯/桥，2026-10-26）  
 - [ ] 3 分钟演示按 `docs/DEMO_SCRIPT.md` 跑通（含擦边倍率 + 死亡梗）  
 - [ ] ≥1 条竖屏素材（优先「最勇擦边」）  
 - [ ] Remix 邀请文案已发出（`REMIX_INVITE.md`）  
