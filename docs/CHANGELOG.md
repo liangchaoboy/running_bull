@@ -1,3 +1,9 @@
+## 2026-10-27 · 半日：擦边目视清单 + Demo 开场自检
+
+- 新增 [`GRAZE_PLAYTEST.md`](GRAZE_PLAYTEST.md)：N2 三局目视 PASS/FAIL（toast / 同障一次 / 结算 / 撞死）。
+- [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) 补开场前自检（XB + Pages `?v=road5`、road5、擦边先测）。
+- [`XB_DEMO_BLOCKERS.md`](XB_DEMO_BLOCKERS.md) 状态刷新至 10-27 上午；玩法无代码改动，`npm test` 26/26。
+
 ## 2026-10-26 · road5 验收 PASS
 
 - 资深小游戏玩家土路实机：洞 PASS、平路弯 PASS、桥仍 OK。网页 `4bb40ae` `?v=road5` + XB 同链 Publish 维持。下一档转 Demo 口述/擦边目视/竖屏素材/国内 CDN（见 [`XB_DEMO_BLOCKERS.md`](XB_DEMO_BLOCKERS.md)）。

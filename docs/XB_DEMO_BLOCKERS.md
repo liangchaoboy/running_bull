@@ -2,7 +2,7 @@
 
 > 可玩 Demo **只能在 XBuilder 搭**；本仓库是文案包 + 逻辑测试。  
 > 用途：课前 / 评委前自检；阻塞解除后把 Publish URL 写回 README。  
-> 状态核实：2026-10-26 下午 Asia/Shanghai（road5 网页+XB 已上；土路实机：洞/平路弯 PASS、桥 OK）。
+> 状态核实：2026-10-27 上午 Asia/Shanghai（road5 维持 PASS；半日自进化：补擦边目视清单 [`GRAZE_PLAYTEST.md`](GRAZE_PLAYTEST.md)）。
 
 ---
 
@@ -29,8 +29,8 @@
 
 | # | 项 | 谁解 | 状态 |
 |---|------|------|------|
-| N1 | 3 分钟口述按 `DEMO_SCRIPT.md` 跑通（含故意擦边 + 撞死） | Vincent / 助手陪跑 | ⏳ 待做 |
-| N2 | 擦边倍率单次 playtest 目视确认反馈 | 助手 / 资深玩家 | ⏳ 工程已就位，未目视确认 |
+| N1 | 3 分钟口述按 `DEMO_SCRIPT.md` 跑通（含故意擦边 + 撞死） | Vincent / 助手陪跑 | ⏳ 口述稿已加开场自检；待真人跑通 |
+| N2 | 擦边倍率单次 playtest 目视确认反馈 | 助手 / 资深玩家 | ⏳ 清单已就位 [`GRAZE_PLAYTEST.md`](GRAZE_PLAYTEST.md)；待目视勾 PASS |
 | N3 | ≥1 条竖屏「最勇擦边」素材 | Vincent | ⏳ 未投流前必备 |
 | N4 | 国内主入口（Kodo/CDN 或自有域） | Vincent | ⏳ Pages 仅备用 |
 | N5 | `neikochan/running_bull` 写权限 | Vincent | ⚠️ 不阻塞可玩 Demo |

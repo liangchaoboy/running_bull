@@ -7,6 +7,19 @@
 
 ---
 
+## 开场前 30 秒自检（2026-10-27）
+
+| 项 | 准备 |
+|----|------|
+| 桌面试玩 | https://x.qiniu.com/project/wechat-f860f2cd2d58bcf7/running_bull |
+| 手机备用 | https://liangchaoboy.github.io/running_bull/mobile-web/?v=road5 （国内慢则改用自有 CDN） |
+| 道路 | road5 洞/平路弯/桥已土路 PASS；演示时可选泥土图 |
+| 擦边 | 按 [`GRAZE_PLAYTEST.md`](GRAZE_PLAYTEST.md) 先自测 1 局，确认有「擦边!/勇敢!」再上台 |
+| 挑战卡 | 剪贴板备好 [`growth/CHALLENGE_CARD.md`](../growth/CHALLENGE_CARD.md) 文案 |
+| 失败预案 | 60s 录屏 + 一张高分结算截图 |
+
+---
+
 ## 时间轴总览
 
 | 段 | 时间 | 标题 |
